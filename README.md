@@ -25,7 +25,7 @@
 ___
 ## 📂 Directory Structure
 ```env
-~/T-banner/
+~/Tmx-theme/
   ├── 📜 install.sh              # Main installation script
   ├── 📁 black/                 # Dark theme package
   │   ├── 🎨 font.ttf           # Nerd Font for icons
@@ -80,12 +80,12 @@ ___
 | CLI Tools      | Lsd, Bat, Ripgrep, Fzf, Lazygit    |
 | Development    | Neovim, Lua, LSP, Debuggers        |
 | Visual         | Figlet, Lolcat, Ncurses-utils      |
-
+___
 ## ❓ FAQ
 ### Q: How to switch themes?
 ```bash
 # Re-run installer
-bash ~/T-banner/install.sh
+bash ~/Tmx-theme/install.sh
 ```
 
 ### Q: Where are configs stored?
@@ -98,13 +98,13 @@ bash ~/T-banner/install.sh
 
 ### Q: How to update?
 ```bash
-cd ~/T-banner && git pull && bash install.sh
+cd ~/Tmx-theme && git pull && bash install.sh
 ```
 
 ## 🗑️ Uninstall
 ```bash
 # Using installer
-bash ~/T-banner/install.sh # Choose option 3
+bash ~/Tmx-theme/install.sh # Choose option 3
 
 # Manual removal
 rm -rf ~/.termux ~/.zsh* ~/.oh-my-zsh ~/.config/nvim
