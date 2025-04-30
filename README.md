@@ -8,11 +8,11 @@
 </div>
 
 <p align="center">
-  <img src="https://raw.githubusercontent.com/tharindu899/note/refs/heads/master/tmx4.jpg?token=GHSAT0AAAAAADCOEG6CHTK4TGYRIWGN66BG2ARXENQ" />
+  <img src="https://raw.githubusercontent.com/tharindu899/note/refs/heads/master/tmx5.jpg?token=GHSAT0AAAAAADCOEG6D6PZHPIQ3CTIGI3RO2ARXK5A" />
 </p>
 
 <p align="center">
-  <img src="https://img.shields.io/badge/Termux_Theme_Customizer-Preview-2D3436?style=for-the-badge&logo=android&logoColor=white&labelColor=2D3436" />
+  <img src="https://img.shields.io/badge/Termux_Theme_Customizer-2D3436?style=for-the-badge&logo=android&logoColor=white&labelColor=2D3436" />
 </p>
 
 ## ✨ Features
