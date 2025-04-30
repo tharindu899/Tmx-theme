@@ -59,7 +59,9 @@ pkg install curl -y && curl -sL https://git.io/termux-theme | bash
 pkg update -y
 pkg install git -y
 git clone https://github.com/tharinsu899/Tmx-theme.git ~/t-banner
+```
 
+```bash
 # Step 2: Run installer
 cd ~/t-banner
 bash install.sh
