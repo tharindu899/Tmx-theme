@@ -123,11 +123,15 @@ ___
 1. Allow Termux storage permissions
 2. Restart Termux after installation
 3. First launch may take 2-3 minutes
-___
-⭐ **Pro Tip**: Use `ctrl + t` for quick file manager access!
 
-💻 **Developed with ❤️ by [Tharindu Prabath]**
-🔗 **Credits**: Based on work by [remo7777](https://github.com/remo7777/T-Header)
+---
 
-📧 **Support**: tprabath81@gmail.com
-```
+✨ **Pro Tip**: Press `Ctrl + T` to launch the file manager instantly!
+
+💻 **Crafted with ❤️ by [Your Name]**
+
+🔗 **Credits**: Inspired by the amazing work of [remo7777](https://github.com/remo7777/T-Header) ⭐
+
+📬 **Need Help?** Reach out: [your@email.com](mailto:your@email.com)
+
+---
