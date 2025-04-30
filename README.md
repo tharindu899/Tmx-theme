@@ -8,7 +8,7 @@
 </div>
 
 <p align="center">
-  <img src="https://ibb.co/2723JrsP" />
+  <img src="https://i.ibb.co/Fbv4p10/tmx5.jpg" alt="tmx5" />
 </p>
 
 <p align="center">
