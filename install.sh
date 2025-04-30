@@ -93,13 +93,14 @@ EOF
 
 # Installation tasks
 install_packages() {
+    run_task "${YELLOW}it will take 10-20min${RESET}"
     run_task "${YELLOW}Updating packages${RESET}" apt update
     run_task "${YELLOW}Upgrading system${RESET}" apt upgrade -y
     run_task "${BLUE}Installing pkg-nala${RESET}" pkg install nala -y
     run_task "${BLUE}Installing core utilities${RESET}" pkg install zsh git wget curl python micro figlet lsd logo-ls ncurses-utils -y
     run_task "${BLUE}Installing development tools${RESET}" pkg install neovim lua-language-server ripgrep lazygit -y
     run_task "${BLUE}Installing figlet and lolcat${RESET}" pkg install figlet ruby -y
-    run_task "${BLUE}Installing niovim tool${RESET}" apt install build-essential zip termux-api gdu gdb gdbserver gh fd fzf neovim lua-language-server jq-lsp luarocks stylua ripgrep yarn python-pip ccls clang zig rust-analyzer
+    run_task "${BLUE}Installing niovim tool${RESET}" apt install build-essential zip termux-api gdu gdb gdbserver gh fd fzf neovim lua-language-server jq-lsp luarocks stylua ripgrep yarn python-pip ccls clang zig rust-analyzer -y
     run_task "${BLUE}Installing neovim${RESET}" pip install neovim
     run_task "${BLUE}Installing nmp neovim${RESET}" npm install -g neovim
     run_task "${BLUE}Installing gem neovim${RESET}" gem install neovim
