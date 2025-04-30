@@ -128,10 +128,10 @@ ___
 
 ✨ **Pro Tip**: Press `Ctrl + T` to launch the file manager instantly!
 
-💻 **Crafted with ❤️ by [Your Name]**
+💻 **Crafted with ❤️ by [Tharindu899]**
 
 🔗 **Credits**: Inspired by the amazing work of [remo7777](https://github.com/remo7777/T-Header) ⭐
 
-📬 **Need Help?** Reach out: [your@email.com](mailto:your@email.com)
+📬 **Need Help?** Reach out: [Gmail](tprabath81@gmail.com)
 
 ---
