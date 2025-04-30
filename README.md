@@ -7,7 +7,13 @@
   <img src="https://img.shields.io/badge/Platform-Termux-orange" alt="Platform">
 </div>
 
-![Demo Banner](https://via.placeholder.com/800x200/2D3436/FFFFFF?text=Termux+Theme+Customizer+Preview)
+<p align="center">
+  <img src="https://raw.githubusercontent.com/tharindu899/note/refs/heads/master/tmx4.jpg?token=GHSAT0AAAAAADCOEG6CHTK4TGYRIWGN66BG2ARXENQ" />
+</p>
+
+<p align="center">
+  <img src="https://img.shields.io/badge/Termux_Theme_Customizer-Preview-2D3436?style=for-the-badge&logo=android&logoColor=white&labelColor=2D3436" />
+</p>
 
 ## ✨ Features
 - Dual theme options (Dark/Color)
