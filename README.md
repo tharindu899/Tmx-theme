@@ -22,38 +22,28 @@
 - Pre-configured Neovim IDE
 - One-click installation
 - Automatic dependency resolver
-
-## 🚀 Quick Install
-```bash
-# Run this in Termux
-
-```
+___
 ## 📂 Directory Structure
 ```env
 ~/T-banner/
-├── 📜 install.sh              # Main installation script
-├── 📁 black/                 # Dark theme package
-│   ├── 🎨 font.ttf           # Nerd Font for icons
-│   ├── ⚙️ termux.properties  # Termux settings/config
-│   ├── 🖌️ colors.properties  # Color scheme definitions
-│   ├── 🐧 .zshrc             # ZSH configuration file
-│   ├── ⚡ .p10k.zsh          # Powerlevel10k theme config
-│   ├── 🖼️ .banner.sh         # Custom login banner script
-│   ├── 🎭 .draw              # ASCII art database
-│   ├── ✏️ .draw.sh           # Drawing script
-│   ├── 📜 zshrc              # System-wide ZSH config
-│   └── 🖋️ ASCII-Shadow.flf   # Custom figlet font
-└── 📁 color/                 # Color same us black
+  ├── 📜 install.sh              # Main installation script
+  ├── 📁 black/                 # Dark theme package
+  │   ├── 🎨 font.ttf           # Nerd Font for icons
+  │   ├── ⚙️ termux.properties  # Termux settings/config
+  │   ├── 🖌️ colors.properties  # Color scheme definitions
+  │   ├── 🐧 .zshrc             # ZSH configuration file
+  │   ├── ⚡ .p10k.zsh          # Powerlevel10k theme config
+  │   ├── 🖼️ .banner.sh         # Custom login banner script
+  │   ├── 🎭 .draw              # ASCII art database
+  │   ├── ✏️ .draw.sh           # Drawing script
+  │   ├── 📜 zshrc              # System-wide ZSH config
+  │   └── 🖋️ ASCII-Shadow.flf   # Custom figlet font
+  └── 📁 color/                 # Color same us black
 ```
+___
+## 📥 Installation option
+### 🚀 Quick Install
 
-## 📥 Installation Options
-
-### Method 1: Network Install
-```bash
-pkg install curl -y && curl -sL https://github.com/tharinsu899/Tmx-theme | bash
-```
-
-### Method 2: Manual Install
 ```bash
 # Step 1: Clone repo
 pkg update -y
@@ -69,6 +59,7 @@ bash install.sh
 
 # Step 3: Select theme (1/2/3)
 ```
+___
 
 ## 🖼️ Theme Previews
 | Color Theme | Black Theme |
