@@ -50,7 +50,7 @@
 
 ### Method 1: Network Install
 ```bash
-pkg install curl -y && curl -sL https://git.io/termux-theme | bash
+pkg install curl -y && curl -sL https://github.com/tharinsu899/Tmx-theme | bash
 ```
 
 ### Method 2: Manual Install
@@ -58,12 +58,12 @@ pkg install curl -y && curl -sL https://git.io/termux-theme | bash
 # Step 1: Clone repo
 pkg update -y
 pkg install git -y
-git clone https://github.com/tharinsu899/Tmx-theme.git ~/t-banner
+git clone https://github.com/tharinsu899/Tmx-theme.git ~/Tmx-theme
 ```
 
 ```bash
 # Step 2: Run installer
-cd ~/t-banner
+cd ~/Tmx-theme
 bash install.sh
 
 # Step 3: Select theme (1/2/3)
