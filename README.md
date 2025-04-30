@@ -45,19 +45,12 @@ ___
 ### 🚀 Quick Install
 
 ```bash
-# Step 1: Clone repo
 pkg update -y
 pkg upgtade -y
 pkg install git -y
 git clone https://github.com/tharindu899/Tmx-theme.git ~/Tmx-theme
-```
-
-```bash
-# Step 2: Run installer
 cd ~/Tmx-theme
 bash install.sh
-
-# Step 3: Select theme (1/2/3)
 ```
 ___
 
