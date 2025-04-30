@@ -93,7 +93,10 @@ EOF
 
 # Installation tasks
 install_packages() {
-    run_task "${YELLOW}it will take 10-20min${RESET}"
+    echo -e ""
+    echo -e "${RED} ${BOLD}•••It will take 10-20min•••${RESET}"
+    echo -e "${BOLD}----------------------------${RESET}"
+    echo -e ""
     run_task "${YELLOW}Updating packages${RESET}" apt update
     run_task "${YELLOW}Upgrading system${RESET}" apt upgrade -y
     run_task "${BLUE}Installing pkg-nala${RESET}" pkg install nala -y
