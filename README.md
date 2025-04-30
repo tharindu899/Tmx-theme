@@ -8,7 +8,7 @@
 </div>
 
 <p align="center">
-  <img src="https://i.ibb.co/Fbv4p10/tmx5.jpg" alt="tmx5" />
+  <img src="https://github.com/tharindu899/Tmx-theme/blob/master/src/img/tmx5.jpg" alt="tmx5" />
 </p>
 
 <p align="center">
