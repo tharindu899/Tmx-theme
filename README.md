@@ -57,8 +57,9 @@ pkg install curl -y && curl -sL https://github.com/tharinsu899/Tmx-theme | bash
 ```bash
 # Step 1: Clone repo
 pkg update -y
+pkg upgtade -y
 pkg install git -y
-git clone https://github.com/tharinsu899/Tmx-theme.git ~/Tmx-theme
+git clone https://github.com/tharindu899/Tmx-theme.git ~/Tmx-theme
 ```
 
 ```bash
