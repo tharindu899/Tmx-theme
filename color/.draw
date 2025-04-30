@@ -39,7 +39,7 @@ echo "x"
 echo "x"
 WRITE
 PUT 10 42
-echo -e "\e[35mBoot Script \e[33m2.0\e[0m"
+echo -e "\e[35mBoot Script \e[33m3.0\e[0m"
 PUT 12 0
 echo
 NORM

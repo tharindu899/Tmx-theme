@@ -3,7 +3,6 @@ export ZSH="$HOME/.oh-my-zsh"
 export LANG=en_US.UTF-8
 export LC_ALL=en_US.UTF-8
 export LC_CTYPE=en_US.UTF-8
-export GITHUB_TOKEN="ghp_1UmzmA2AF0reTt3biL19tqQmU"
 
 # Powerlevel10k theme configuration
 ZSH_THEME="powerlevel10k/powerlevel10k"
@@ -29,7 +28,7 @@ plugins=(
 )
 
 # Display banner
-TNAME="thri"
+TNAME="Tmx-3.0"
 cols=$(tput cols)
 bash ~/.banner.sh ${cols} ${TNAME}
 
