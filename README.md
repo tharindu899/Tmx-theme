@@ -72,7 +72,7 @@ bash install.sh
 ## 🖼️ Theme Previews
 | Color Theme | Black Theme |
 |-------------|-------------|
-| <img src="https://i.imgur.com/dyUGhMU.jpeg" width="300"> | <img src="https://i.imgur.com/BLACK_PREVIEW.png" width="300"> |
+| <img src="https://i.imgur.com/dyUGhMU.jpeg" width="300"> | <img src="https://i.imgur.com/dyUGhMU.jpeg" width="300"> |
 
 ## 📋 File Locations
 | Config File          | Destination               |
