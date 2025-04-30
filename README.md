@@ -1,5 +1,5 @@
 
-# 🎨 Termux Theme Customizer 
+# 🎨 Termux Theme
 
 <div align="center">
   <img src="https://img.shields.io/badge/Version-2.0.0-blue" alt="Version">
@@ -127,6 +127,7 @@ ___
 ⭐ **Pro Tip**: Use `ctrl + t` for quick file manager access!
 
 💻 **Developed with ❤️ by [Tharindu Prabath]**
+🔗 **Credits**: Based on work by [remo7777](https://github.com/remo7777/T-Header)
 
 📧 **Support**: tprabath81@gmail.com
 ```
