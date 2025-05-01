@@ -46,10 +46,12 @@ ___
 
 ```bash
 pkg update -y
-pkg upgtade -y
+pkg upgrade -y
 pkg install git -y
 git clone https://github.com/tharindu899/Tmx-theme.git ~/Tmx-theme
 cd ~/Tmx-theme
+```
+```bash
 bash install.sh
 ```
 ___
