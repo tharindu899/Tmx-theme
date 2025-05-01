@@ -3,6 +3,7 @@ export ZSH="$HOME/.oh-my-zsh"
 export LANG=en_US.UTF-8
 export LC_ALL=en_US.UTF-8
 export LC_CTYPE=en_US.UTF-8
+export EDITOR="nvim"
 
 # Powerlevel10k theme configuration
 ZSH_THEME="powerlevel10k/powerlevel10k"
@@ -80,7 +81,7 @@ alias z='vi ~/.zshrc'
 alias cdd='cd $HOME/storage/downloads'
 alias ax='acodeX-server'
 alias rr='source ~/.zshrc'
-alias vps='ssh root@161.97.143.228'
+alias vps='ssh root@192.xxx.xx.xx' #add your vps ip
 
 # Safety aliases
 alias cp='cp -i'
