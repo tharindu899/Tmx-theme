@@ -50,7 +50,7 @@ source $PREFIX/etc/.plugin/zsh-autosuggestions/zsh-autosuggestions.zsh
 
 # Aliases
 alias pkg='nala'
-alias apt='nala'
+#alias apt='nala'
 alias g='git clone'
 alias t='termux-open'
 alias ai='nala install'
