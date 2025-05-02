@@ -90,12 +90,7 @@ bash ~/Tmx-theme/install.sh
 ~/.p10k.zsh
 ~/.config/nvim/
 ```
-
-### Q: How to update?
-```bash
-cd ~/Tmx-theme && git pull && bash install.sh
-```
-
+___
 ## 🗑️ Uninstall
 ```bash
 # Using installer
