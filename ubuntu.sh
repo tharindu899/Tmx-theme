@@ -158,21 +158,14 @@ install_packages() {
             pkg install lua-language-server lazygit -y
         run_task "${BLUE}Installing Python packages${RESET}" \
             pip install neovim
+        run_task "${BLUE}Installing Node packages${RESET}" \
+            npm install -g neovim
+        run_task "${BLUE}Installing Ruby gems${RESET}" \
+            gem install neovim lolcat
     else
         run_task "${YELLOW}Updating packages${RESET}" sudo apt-get update
         run_task "${YELLOW}Upgrading system${RESET}" sudo apt-get upgrade -y
-        run_task "${BLUE}Installing core utilities${RESET}" \
-            sudo apt-get install "${common_packages[@]}" bat -y
-        run_task "${BLUE}Installing development tools${RESET}" \
-            sudo apt-get install build-essential gdb -y
-        run_task "${BLUE}Installing Python packages${RESET}" \
-            pip3 install --user neovim
     fi
-
-    run_task "${BLUE}Installing Node packages${RESET}" \
-        npm install -g neovim
-    run_task "${BLUE}Installing Ruby gems${RESET}" \
-        gem install neovim lolcat
 }
 
 setup_fonts() {
