@@ -1,0 +1,84 @@
+# -*- mode: sh -*-
+# Environment configuration
+export ZSH="$HOME/.oh-my-zsh"
+export LANG=en_US.UTF-8
+export LC_ALL=en_US.UTF-8
+export EDITOR="vim"
+export TERM="xterm-256color"
+
+# Powerlevel10k configuration
+ZSH_THEME="powerlevel10k/powerlevel10k"
+POWERLEVEL9K_DISABLE_CONFIGURATION_WIZARD=true
+
+# Plugin configuration
+plugins=(
+    git
+    git-auto-fetch
+    zsh-completions
+    zsh-history-substring-search
+    zsh-autosuggestions
+    zsh-syntax-highlighting
+    dircycle
+    extract
+    safe-paste
+)
+
+# Load custom drawing configuration
+[[ -f ~/.draw.sh ]] && source ~/.draw.sh
+
+# Display system banner
+cols=$(tput cols)
+[[ -f ~/.banner.sh ]] && bash ~/.banner.sh $cols "Ubuntu Server"
+
+# Initialize Oh My Zsh
+source $ZSH/oh-my-zsh.sh
+
+# Powerlevel10k instant prompt
+if [[ -r "${XDG_CACHE_HOME:-$HOME/.cache}/p10k-instant-prompt-${(%):-%n}.zsh" ]]; then
+    source "${XDG_CACHE_HOME:-$HOME/.cache}/p10k-instant-prompt-${(%):-%n}.zsh"
+fi
+
+# Load Powerlevel10k theme
+source $ZSH/custom/themes/powerlevel10k/powerlevel10k.zsh-theme
+
+# Plugin configurations
+source $ZSH/plugins/zsh-syntax-highlighting/zsh-syntax-highlighting.zsh
+source $ZSH/plugins/zsh-autosuggestions/zsh-autosuggestions.zsh
+
+# Custom aliases
+alias ls='lsd --group-dirs first'
+alias ll='lsd -Al --group-dirs first'
+alias lt='lsd --tree --depth 3'
+alias cat='bat'
+alias update='sudo apt update && sudo apt upgrade -y'
+alias install='sudo apt install'
+alias remove='sudo apt remove'
+alias purge='sudo apt purge'
+alias clean='sudo apt autoremove && sudo apt autoclean'
+alias py='python3'
+alias pipup='python3 -m pip install --upgrade pip'
+alias grep='grep --color=auto'
+alias egrep='egrep --color=auto'
+alias fgrep='fgrep --color=auto'
+
+# Safety aliases
+alias cp='cp -iv'
+alias mv='mv -iv'
+alias rm='rm -Iv'
+alias ln='ln -i'
+
+# History configuration
+HISTFILE=~/.zsh_history
+HISTSIZE=100000
+SAVEHIST=100000
+setopt appendhistory
+setopt sharehistory
+setopt incappendhistory
+
+# Custom functions
+draw() {
+    [[ -f ~/.draw ]] && cat ~/.draw || echo "No .draw file found"
+}
+
+# Load powerlevel10k config
+[[ ! -f ~/.p10k.zsh ]] || source ~/.p10k.zsh
