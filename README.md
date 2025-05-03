@@ -52,7 +52,18 @@ git clone https://github.com/tharindu899/Tmx-theme.git ~/Tmx-theme
 cd ~/Tmx-theme
 ```
 ```bash
+sudo apt update -y && \
+sudo apt upgrade -y && \
+sudo apt install git -y && \
+git clone https://github.com/tharindu899/Tmx-theme.git ~/Tmx-theme && \
+cd ~/Tmx-theme && \
+chmod +x ubuntu.sh
+```
+```bash
 bash install.sh
+```
+```bash
+bash ubuntu.sh
 ```
 ___
 
