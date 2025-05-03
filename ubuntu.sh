@@ -168,7 +168,61 @@ install_packages() {
     fi
 }
 
+setup_fonts() {
+    # Common font setup for both OS types
+    if [ -f "$HOME/Tmx-theme/$THEME_DIR/font.ttf" ]; then
+        if [ "$OS_TYPE" == "termux" ]; then
+            mkdir -p ~/.termux
+            run_task "${MAGENTA}Installing Termux font${RESET}" \
+                cp -f "$HOME/Tmx-theme/$THEME_DIR/font.ttf" ~/.termux/font.ttf
+        else
+            run_task "${MAGENTA}Installing system font${RESET}" \
+                sudo cp -f "$HOME/Tmx-theme/$THEME_DIR/font.ttf" /usr/share/fonts/truetype/
+            run_task "${MAGENTA}Updating font cache${RESET}" \
+                sudo fc-cache -f -v
+        fi
+    fi
 
+    # ASCII art font setup
+    if [ -f "$HOME/Tmx-theme/$THEME_DIR/ASCII.flf" ]; then
+        if [ "$OS_TYPE" == "termux" ]; then
+            run_task "${CYAN}Installing ASCII font${RESET}" \
+                cp -f "$HOME/Tmx-theme/$THEME_DIR/ASCII.flf" $PREFIX/share/figlet/
+        else
+            run_task "${CYAN}Installing ASCII font${RESET}" \
+                sudo cp -f "$HOME/Tmx-theme/$THEME_DIR/ASCII.flf" /usr/share/figlet/
+        fi
+    fi
+
+    # Additional font types
+    for font_ext in {ttf,otf,flf}; do
+        if [ -f "$HOME/Tmx-theme/$THEME_DIR/font.${font_ext}" ]; then
+            case $font_ext in
+                ttf|otf)
+                    if [ "$OS_TYPE" == "termux" ]; then
+                        mkdir -p ~/.termux
+                        run_task "${MAGENTA}Installing ${font_ext^^} font${RESET}" \
+                            cp -f "$HOME/Tmx-theme/$THEME_DIR/font.${font_ext}" ~/.termux/
+                    else
+                        run_task "${MAGENTA}Installing ${font_ext^^} font${RESET}" \
+                            sudo cp -f "$HOME/Tmx-theme/$THEME_DIR/font.${font_ext}" /usr/share/fonts/truetype/
+                        run_task "${MAGENTA}Updating font cache${RESET}" \
+                            sudo fc-cache -f -v
+                    fi
+                    ;;
+                flf)
+                    if [ "$OS_TYPE" == "termux" ]; then
+                        run_task "${CYAN}Installing Figlet font${RESET}" \
+                            cp -f "$HOME/Tmx-theme/$THEME_DIR/font.${font_ext}" $PREFIX/share/figlet/
+                    else
+                        run_task "${CYAN}Installing Figlet font${RESET}" \
+                            sudo cp -f "$HOME/Tmx-theme/$THEME_DIR/font.${font_ext}" /usr/share/figlet/
+                    fi
+                    ;;
+            esac
+        fi
+    done
+}
 # ... [Keep all previous configuration variables and functions unchanged] ...
 
 setup_configs() {
