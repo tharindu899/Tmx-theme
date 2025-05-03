@@ -144,8 +144,8 @@ install_packages() {
 
     # Common packages
     local common_packages=(
-        zsh git wget curl python3 micro figlet lsd
-        ripgrep ruby fd-find fzf lolcat
+        zsh git wget curl python3 figlet lsd
+        ripgrep ruby lolcat
     )
 
     # OS-specific packages
@@ -153,7 +153,7 @@ install_packages() {
         run_task "${YELLOW}Updating packages${RESET}" pkg update
         run_task "${YELLOW}Upgrading system${RESET}" pkg upgrade -y
         run_task "${BLUE}Installing core utilities${RESET}" \
-            pkg install "${common_packages[@]}" ncurses-utils neovim -y
+            pkg install "${common_packages[@]}" fzf gh ncurses-utils neovim -y
         run_task "${BLUE}Installing development tools${RESET}" \
             pkg install lua-language-server lazygit -y
         run_task "${BLUE}Installing Python packages${RESET}" \
@@ -164,7 +164,11 @@ install_packages() {
             gem install neovim lolcat
     else
         run_task "${YELLOW}Updating packages${RESET}" sudo apt-get update
-        run_task "${YELLOW}Upgrading system${RESET}" sudo apt-get upgrade -y
+        run_task "${YELLOW}Upgrading system${RESET}" sudo apt-get upgrade -y        
+        run_task "${BLUE}Installing core utilities${RESET}" \
+            pkg install "${common_packages[@]}" fd-find gh -y
+        run_task "${BLUE}Installing Ruby gems${RESET}" \
+            gem install lolcat
     fi
 }
 

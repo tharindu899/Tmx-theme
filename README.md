@@ -43,14 +43,19 @@ ___
 ___
 ## 📥 Installation option
 ### 🚀 Quick Install
-
+- for termux
 ```bash
-pkg update -y
-pkg upgrade -y
-pkg install git -y
-git clone https://github.com/tharindu899/Tmx-theme.git ~/Tmx-theme
-cd ~/Tmx-theme
+pkg update -y && \
+pkg upgrade -y && \
+pkg install git -y && \
+git clone https://github.com/tharindu899/Tmx-theme.git ~/Tmx-theme && \
+cd ~/Tmx-theme && \
+chmod +x install.sh
 ```
+```bash
+bash install.sh
+```
+- for ubuntu
 ```bash
 sudo apt update -y && \
 sudo apt upgrade -y && \
@@ -58,9 +63,6 @@ sudo apt install git -y && \
 git clone https://github.com/tharindu899/Tmx-theme.git ~/Tmx-theme && \
 cd ~/Tmx-theme && \
 chmod +x ubuntu.sh
-```
-```bash
-bash install.sh
 ```
 ```bash
 bash ubuntu.sh
