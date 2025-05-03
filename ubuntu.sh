@@ -168,13 +168,7 @@ install_packages() {
     fi
 }
 
-setup_fonts() {
-    if [ "$OS_TYPE" == "termux" ]; then
-        mkdir -p ~/.termux
-        run_task "${MAGENTA}Setting up fonts${RESET}" \
-            cp -f "$HOME/Tmx-theme/$THEME_DIR/font.ttf" ~/.termux/
-    fi
-}
+
 # ... [Keep all previous configuration variables and functions unchanged] ...
 
 setup_configs() {
