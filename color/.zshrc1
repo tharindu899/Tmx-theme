@@ -46,10 +46,7 @@ source $ZSH/plugins/zsh-syntax-highlighting/zsh-syntax-highlighting.zsh
 source $ZSH/plugins/zsh-autosuggestions/zsh-autosuggestions.zsh
 
 # Custom aliases
-alias ls='lsd --group-dirs first'
-alias ll='lsd -Al --group-dirs first'
-alias lt='lsd --tree --depth 3'
-alias cat='bat'
+alias ls='logo-ls -A'
 alias update='sudo apt update && sudo apt upgrade -y'
 alias install='sudo apt install'
 alias remove='sudo apt remove'
@@ -60,9 +57,10 @@ alias pipup='python3 -m pip install --upgrade pip'
 alias grep='grep --color=auto'
 alias egrep='egrep --color=auto'
 alias fgrep='fgrep --color=auto'
-
+alias d='rm -rf'
+alias z='nano ~/.zshrc'
 # Safety aliases
-alias cp='cp -iv'
+alias cp='cp -r'
 alias mv='mv -iv'
 alias rm='rm -Iv'
 alias ln='ln -i'
