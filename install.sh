@@ -5,6 +5,7 @@ ERROR_LOG="$HOME/skip_errors.log"
 THEME_DIR=""
 THEME_NAME=""
 COLUMNS=$(tput cols)
+MAX_RETRIES=3
 
 # Color Variables
 RED='\033[0;31m'
@@ -57,6 +58,34 @@ run_task() {
     spinner $pid "$msg"
     local exit_code=$?
     status_msg "$msg" "$([ $exit_code -eq 0 ] && echo '✓' || echo '✗')"
+    return $exit_code
+}
+
+# Network check
+check_network() {
+    echo -e "${CYAN}Checking network connectivity...${RESET}"
+    if ! ping -c 1 8.8.8.8 >/dev/null 2>&1; then
+        echo -e "${RED}No internet connection detected!${RESET}"
+        echo -e "${YELLOW}Please check your network and try again.${RESET}"
+        exit 1
+    fi
+}
+
+# Fix Termux repositories
+fix_termux_repos() {
+    echo -e "${YELLOW}Fixing Termux repository configuration...${RESET}"
+    
+    # Backup current sources
+    [ -f "$PREFIX/etc/apt/sources.list" ] && \
+        cp "$PREFIX/etc/apt/sources.list" "$PREFIX/etc/apt/sources.list.backup"
+    
+    # Use official mirrors
+    cat > "$PREFIX/etc/apt/sources.list" << 'EOF'
+# Main Termux repository (Official mirrors)
+deb https://packages.termux.dev/apt/termux-main stable main
+EOF
+    
+    run_task "${BLUE}Updating repository information${RESET}" apt update
 }
 
 # Theme selection
@@ -90,6 +119,22 @@ EOF
     done
 }
 
+# Safe package installation with retry
+safe_install() {
+    local packages=("$@")
+    local retry=0
+    
+    while [ $retry -lt $MAX_RETRIES ]; do
+        if apt install -y "${packages[@]}" 2>> "$ERROR_LOG"; then
+            return 0
+        fi
+        retry=$((retry + 1))
+        [ $retry -lt $MAX_RETRIES ] && sleep 2
+    done
+    
+    log_error "Failed to install: ${packages[*]}"
+    return 1
+}
 
 # Installation tasks
 install_packages() {
@@ -97,24 +142,56 @@ install_packages() {
     echo -e "${RED} ${BOLD}•••It will take 10-20min•••${RESET}"
     echo -e "${BOLD}----------------------------${RESET}"
     echo -e ""
-    run_task "${YELLOW}Updating packages${RESET}" apt update
-    run_task "${YELLOW}Upgrading system${RESET}" apt upgrade -y
-    run_task "${BLUE}Installing pkg-nala${RESET}" pkg install nala -y
-    run_task "${BLUE}Installing core utilities${RESET}" pkg install zsh git wget curl python micro figlet lsd logo-ls ncurses-utils -y
-    run_task "${BLUE}Installing development tools${RESET}" pkg install neovim lua-language-server ripgrep lazygit -y
-    run_task "${BLUE}Installing figlet and lolcat${RESET}" pkg install figlet ruby -y
-    run_task "${BLUE}Installing niovim tool${RESET}" apt install build-essential zip termux-api gdu gdb gdbserver gh fd fzf neovim lua-language-server jq-lsp luarocks stylua ripgrep yarn python-pip ccls clang zig rust-analyzer -y
-    run_task "${BLUE}Installing neovim${RESET}" pip install neovim
-    run_task "${BLUE}Installing nmp neovim${RESET}" npm install -g neovim
-    run_task "${BLUE}Installing gem neovim${RESET}" gem install neovim
-    run_task "${BLUE}Installing lolcat gem (for animation support)${RESET}" gem install lolcat
+    
+    # Fix repositories first
+    fix_termux_repos
+    
+    # Update package lists
+    run_task "${YELLOW}Updating package lists${RESET}" apt update
+    
+    # Essential packages in groups
+    local essential=(zsh git wget curl ncurses-utils)
+    local python=(python python-pip)
+    local ruby=(ruby)
+    local node=(nodejs)
+    local dev=(neovim ripgrep)
+    local tools=(figlet lolcat lsd logo-ls)
+    
+    # Install in stages with better error handling
+    echo -e "${BLUE}Installing essential packages...${RESET}"
+    safe_install "${essential[@]}" || echo -e "${YELLOW}Some essential packages failed${RESET}"
+    
+    echo -e "${BLUE}Installing Python...${RESET}"
+    safe_install "${python[@]}" || echo -e "${YELLOW}Python installation had issues${RESET}"
+    
+    echo -e "${BLUE}Installing Ruby...${RESET}"
+    safe_install "${ruby[@]}" || echo -e "${YELLOW}Ruby installation had issues${RESET}"
+    
+    echo -e "${BLUE}Installing Node.js...${RESET}"
+    safe_install "${node[@]}" || echo -e "${YELLOW}Node.js installation had issues${RESET}"
+    
+    echo -e "${BLUE}Installing development tools...${RESET}"
+    safe_install "${dev[@]}" || echo -e "${YELLOW}Some dev tools failed${RESET}"
+    
+    echo -e "${BLUE}Installing utilities...${RESET}"
+    safe_install "${tools[@]}" || echo -e "${YELLOW}Some utilities failed${RESET}"
+    
+    # Optional: Advanced packages (allow failure)
+    echo -e "${BLUE}Installing optional packages (failures are OK)...${RESET}"
+    apt install -y lua-language-server lazygit fzf 2>> "$ERROR_LOG" || true
+    
+    # Install language-specific packages
+    echo -e "${BLUE}Installing language packages...${RESET}"
+    pip install --break-system-packages neovim 2>> "$ERROR_LOG" || true
+    npm install -g neovim 2>> "$ERROR_LOG" || true
+    gem install neovim lolcat 2>> "$ERROR_LOG" || true
 }
 
 setup_fonts() {
     mkdir -p ~/.termux
     run_task "${MAGENTA}Setting up fonts${RESET}" cp -f "$HOME/Tmx-theme/$THEME_DIR/font.ttf" ~/.termux/
     if [ -f "$HOME/Tmx-theme/$THEME_DIR/ASCII-Shadow.flf" ]; then
-        cp -f "$HOME/Tmx-theme/$THEME_DIR/ASCII-Shadow.flf" "$PREFIX/share/figlet/"
+        cp -f "$HOME/Tmx-theme/$THEME_DIR/ASCII-Shadow.flf" "$PREFIX/share/figlet/" 2>> "$ERROR_LOG" || true
     fi
 }
 
@@ -136,11 +213,30 @@ setup_configs() {
     done
 }
 
+# Safe git clone with retry
+safe_git_clone() {
+    local url=$1
+    local target=$2
+    local retry=0
+    
+    while [ $retry -lt $MAX_RETRIES ]; do
+        if git clone --depth 1 "$url" "$target" 2>> "$ERROR_LOG"; then
+            return 0
+        fi
+        retry=$((retry + 1))
+        rm -rf "$target"
+        [ $retry -lt $MAX_RETRIES ] && sleep 2
+    done
+    
+    log_error "Failed to clone: $url"
+    return 1
+}
+
 setup_zsh_plugins() {
     # Install Oh My Zsh core
     if [ ! -d ~/.oh-my-zsh/.git ]; then
         run_task "${CYAN}Installing Oh My Zsh${RESET}" \
-            git clone --depth 1 "https://github.com/ohmyzsh/ohmyzsh.git" ~/.oh-my-zsh
+            safe_git_clone "https://github.com/ohmyzsh/ohmyzsh.git" ~/.oh-my-zsh
     fi
     
     # Create required directories
@@ -150,7 +246,7 @@ setup_zsh_plugins() {
     # Install Powerlevel10k theme
     if [ ! -d ~/.oh-my-zsh/custom/themes/powerlevel10k ]; then
         run_task "${CYAN}Installing Powerlevel10k${RESET}" \
-            git clone --depth 1 "https://github.com/romkatv/powerlevel10k.git" \
+            safe_git_clone "https://github.com/romkatv/powerlevel10k.git" \
             ~/.oh-my-zsh/custom/themes/powerlevel10k
     fi
 
@@ -171,40 +267,56 @@ setup_zsh_plugins() {
     for plugin in "${ohmyzsh_plugins[@]}"; do
         local name=${plugin##*/}
         local target_dir="$HOME/.oh-my-zsh/plugins/$name"
-        [ -d "$target_dir" ] || run_task "${CYAN}Installing ${name}${RESET}" \
-            git clone --depth 1 "https://github.com/$plugin" "$target_dir"
+        if [ ! -d "$target_dir" ]; then
+            run_task "${CYAN}Installing ${name}${RESET}" \
+                safe_git_clone "https://github.com/$plugin" "$target_dir" || \
+                echo -e "${YELLOW}Failed to install $name (continuing...)${RESET}"
+        fi
     done
 
     # Install system plugins
     for plugin in "${etc_plugins[@]}"; do
         local name=${plugin##*/}
         local target_dir="$PREFIX/etc/.plugin/$name"
-        [ -d "$target_dir" ] || run_task "${CYAN}Installing ${name}${RESET}" \
-            git clone --depth 1 "https://github.com/$plugin" "$target_dir"
+        if [ ! -d "$target_dir" ]; then
+            run_task "${CYAN}Installing ${name}${RESET}" \
+                safe_git_clone "https://github.com/$plugin" "$target_dir" || \
+                echo -e "${YELLOW}Failed to install $name (continuing...)${RESET}"
+        fi
     done
 }
 
 setup_astronvim() {
     [ -d ~/.config/nvim ] && run_task "${RED}Removing old nvim config${RESET}" rm -rf ~/.config/nvim
-    run_task "${GREEN}Installing AstroNvim${RESET}" git clone --depth 1 "https://github.com/tharindu899/Astronvim-Termux.git" ~/.config/nvim
+    run_task "${GREEN}Installing AstroNvim${RESET}" \
+        safe_git_clone "https://github.com/tharindu899/Astronvim-Termux.git" ~/.config/nvim || \
+        echo -e "${YELLOW}AstroNvim installation failed (optional)${RESET}"
 }
 
 uninstall_theme() {
     echo -e "${RED}Uninstalling theme...${RESET}"
     rm -rf ~/.termux ~/.zshrc ~/.p10k.zsh ~/.banner.sh ~/.oh-my-zsh ~/.config/nvim
-    termux-reload-settings
+    termux-reload-settings 2>/dev/null || true
     echo -e "${GREEN}Theme uninstalled successfully.${RESET}"
 }
 
 # Main execution
+echo -e "${BOLD}${GREEN}Starting Tmx Theme Installation${RESET}\n"
+
+# Check network first
+check_network
+
 select_theme
 install_packages
 setup_fonts
 setup_configs
-termux-reload-settings
+termux-reload-settings 2>/dev/null || true
 setup_zsh_plugins
 setup_astronvim
 
 # Final step
 run_task "${BOLD}Setting default shell${RESET}" chsh -s zsh
-echo -e "\n${BOLD}${GREEN}✓ Setup complete! Restart your terminal or run 'zsh'.${RESET}"
+
+echo -e "\n${BOLD}${GREEN}✓ Setup complete!${RESET}"
+echo -e "${YELLOW}Please restart Termux or run 'zsh' to apply changes.${RESET}"
+echo -e "${CYAN}Check $ERROR_LOG for any warnings or errors.${RESET}\n"
