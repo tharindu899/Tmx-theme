@@ -1,322 +1,480 @@
 #!/bin/bash
 
-# Configuration
-ERROR_LOG="$HOME/skip_errors.log"
-THEME_DIR=""
-THEME_NAME=""
-COLUMNS=$(tput cols)
-MAX_RETRIES=3
+#############################################
+# Tmx-Theme Installer v3.0
+# Modern Termux/Ubuntu Theme Installation
+#############################################
 
-# Color Variables
-RED='\033[0;31m'
-GREEN='\033[0;32m'
-YELLOW='\033[0;33m'
-BLUE='\033[0;34m'
-MAGENTA='\033[0;35m'
-CYAN='\033[0;36m'
-WHITE='\033[0;37m'
-BOLD='\033[1m'
-RESET='\033[0m'
+set -e  # Exit on error
 
-# Spinner and ASCII Art Colors
-ART_COLOR=$CYAN
-SPINNER_COLOR=$MAGENTA
+# === CONFIGURATION ===
+readonly SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+readonly HOME_DIR="$HOME"
+readonly LOG_FILE="$HOME_DIR/tmx-install.log"
+readonly BACKUP_DIR="$HOME_DIR/.tmx-backup-$(date +%Y%m%d-%H%M%S)"
 
-# Error handling
-log_error() {
-    echo -e "[$(date +'%Y-%m-%d %H:%M:%S')] ERROR: $1" >> "$ERROR_LOG"
+# === COLORS ===
+readonly C_RED='\033[0;31m'
+readonly C_GREEN='\033[0;32m'
+readonly C_YELLOW='\033[1;33m'
+readonly C_BLUE='\033[0;34m'
+readonly C_MAGENTA='\033[0;35m'
+readonly C_CYAN='\033[0;36m'
+readonly C_BOLD='\033[1m'
+readonly C_RESET='\033[0m'
+
+# === UTILITY FUNCTIONS ===
+
+log() {
+    echo "[$(date +'%Y-%m-%d %H:%M:%S')] $*" | tee -a "$LOG_FILE"
 }
 
-# Output functions
-status_msg() {
-    local msg=$1
-    local status=$2
-    local symbol_color=$([ "$status" == "✓" ] && echo "$GREEN" || echo "$RED")
-    local clean_msg=$(echo -e "$msg" | sed 's/\x1B\[[0-9;]*[a-zA-Z]//g')
-    local padding=$((COLUMNS - ${#clean_msg} - 12))
-    printf "\r%b[ %s ]%b %b%-${padding}s\n" "$symbol_color" "$status" "$RESET" "$msg" ""
+error() {
+    echo -e "${C_RED}✗ ERROR: $*${C_RESET}" >&2
+    log "ERROR: $*"
+    exit 1
+}
+
+success() {
+    echo -e "${C_GREEN}✓ $*${C_RESET}"
+    log "SUCCESS: $*"
+}
+
+info() {
+    echo -e "${C_CYAN}ℹ $*${C_RESET}"
+    log "INFO: $*"
+}
+
+warn() {
+    echo -e "${C_YELLOW}⚠ $*${C_RESET}"
+    log "WARNING: $*"
 }
 
 spinner() {
-    local pid=$1 msg="$2"
+    local pid=$1
+    local msg="$2"
     local spin=('⠋' '⠙' '⠹' '⠸' '⠼' '⠴' '⠦' '⠧' '⠇' '⠏')
-
-    while kill -0 $pid 2>/dev/null; do
-        for c in "${spin[@]}"; do
-            printf "\r%b[%s]%b %b" "$SPINNER_COLOR" "$c" "$RESET" "$msg"
+    
+    while kill -0 "$pid" 2>/dev/null; do
+        for char in "${spin[@]}"; do
+            printf "\r${C_MAGENTA}[%s]${C_RESET} %s" "$char" "$msg"
             sleep 0.1
         done
     done
-    wait $pid
-}
-
-run_task() {
-    local msg="$1"
-    shift
-    ("$@") > /dev/null 2>> "$ERROR_LOG" &
-    local pid=$!
-    spinner $pid "$msg"
+    wait "$pid"
     local exit_code=$?
-    status_msg "$msg" "$([ $exit_code -eq 0 ] && echo '✓' || echo '✗')"
+    printf "\r"
     return $exit_code
 }
 
-# Network check
-check_network() {
-    echo -e "${CYAN}Checking network connectivity...${RESET}"
-    if ! ping -c 1 8.8.8.8 >/dev/null 2>&1; then
-        echo -e "${RED}No internet connection detected!${RESET}"
-        echo -e "${YELLOW}Please check your network and try again.${RESET}"
-        exit 1
+run_task() {
+    local description="$1"
+    shift
+    
+    log "Running: $description"
+    ("$@") >> "$LOG_FILE" 2>&1 &
+    local pid=$!
+    
+    if spinner "$pid" "$description"; then
+        success "$description"
+        return 0
+    else
+        error "$description failed (check $LOG_FILE)"
+        return 1
     fi
 }
 
-# Fix Termux repositories
-fix_termux_repos() {
-    echo -e "${YELLOW}Fixing Termux repository configuration...${RESET}"
+confirm() {
+    local prompt="$1"
+    local default="${2:-n}"
+    local response
     
-    # Backup current sources
-    [ -f "$PREFIX/etc/apt/sources.list" ] && \
-        cp "$PREFIX/etc/apt/sources.list" "$PREFIX/etc/apt/sources.list.backup"
+    if [[ "$default" == "y" ]]; then
+        read -p "$(echo -e "${C_YELLOW}$prompt [Y/n]: ${C_RESET}")" response
+        response=${response:-y}
+    else
+        read -p "$(echo -e "${C_YELLOW}$prompt [y/N]: ${C_RESET}")" response
+        response=${response:-n}
+    fi
     
-    # Use official mirrors
-    cat > "$PREFIX/etc/apt/sources.list" << 'EOF'
-# Main Termux repository (Official mirrors)
-deb https://packages.termux.dev/apt/termux-main stable main
-EOF
-    
-    run_task "${BLUE}Updating repository information${RESET}" apt update
+    [[ "$response" =~ ^[Yy]$ ]]
 }
 
-# Theme selection
-select_theme() {
-    while true; do
-        clear
-        echo -e "${ART_COLOR}"
-        cat << "EOF"
-  ████████╗██╗  ██╗███████╗███████╗███╗   ███╗███████╗
-  ╚══██╔══╝██║  ██║██╔════╝██╔════╝████╗ ████║██╔════╝
-     ██║   ███████║█████╗  █████╗  ██╔████╔██║█████╗  
-     ██║   ██╔══██║██╔══╝  ██╔══╝  ██║╚██╔╝██║██╔══╝  
-     ██║   ██║  ██║███████╗███████╗██║ ╚═╝ ██║███████╗
-     ╚═╝   ╚═╝  ╚═╝╚══════╝╚══════╝╚═╝     ╚═╝╚══════╝
+show_header() {
+    clear
+    echo -e "${C_CYAN}"
+    cat << 'EOF'
+╔══════════════════════════════════════════════════════╗
+║                                                      ║
+║     ████████╗███╗   ███╗██╗  ██╗                    ║
+║     ╚══██╔══╝████╗ ████║╚██╗██╔╝                    ║
+║        ██║   ██╔████╔██║ ╚███╔╝                     ║
+║        ██║   ██║╚██╔╝██║ ██╔██╗                     ║
+║        ██║   ██║ ╚═╝ ██║██╔╝ ██╗                    ║
+║        ╚═╝   ╚═╝     ╚═╝╚═╝  ╚═╝                    ║
+║                                                      ║
+║           Terminal Theme Installer v3.0             ║
+║                                                      ║
+╚══════════════════════════════════════════════════════╝
 EOF
-        echo -e "${RESET}"
-        echo -e "${CYAN}  ${BOLD}1) Black Theme${RESET}"
-        echo -e "${CYAN}  ${BOLD}2) Color Theme${RESET}"
-        echo -e "${RED}  ${BOLD}3) Uninstall${RESET}"
-        echo -e "${YELLOW}  ${BOLD}4) Exit${RESET}"
-        echo
-        read -p "$(echo -e "${BOLD}${MAGENTA}Select theme (1-4): ${RESET}")" choice
+    echo -e "${C_RESET}\n"
+}
 
-        case "$choice" in
-            1) THEME_DIR="black"; return 0 ;;
-            2) THEME_DIR="color"; return 0 ;;
-            3) uninstall_theme; exit 0 ;;
-            4) echo -e "${RED}Exiting...${RESET}"; exit 0 ;;
-            *) echo -e "${RED}Invalid option. Please enter 1-4.${RESET}"; sleep 1 ;;
+# === DETECTION ===
+
+detect_os() {
+    if [[ -d "/data/data/com.termux" ]]; then
+        echo "termux"
+    elif [[ -f "/etc/debian_version" ]]; then
+        echo "ubuntu"
+    else
+        echo "unknown"
+    fi
+}
+
+check_requirements() {
+    local os_type=$(detect_os)
+    
+    info "Detected OS: ${C_BOLD}${os_type}${C_RESET}"
+    
+    # Check internet connectivity
+    if ! ping -c 1 8.8.8.8 &>/dev/null; then
+        error "No internet connection detected"
+    fi
+    
+    # Check if running as root (Ubuntu)
+    if [[ "$os_type" == "ubuntu" ]] && [[ $EUID -eq 0 ]]; then
+        error "Do not run this script as root. It will ask for sudo when needed."
+    fi
+    
+    echo "$os_type"
+}
+
+# === MENU SYSTEM ===
+
+show_menu() {
+    local title="$1"
+    shift
+    local options=("$@")
+    
+    echo -e "${C_BOLD}${title}${C_RESET}\n"
+    
+    local i=1
+    for option in "${options[@]}"; do
+        echo -e "  ${C_CYAN}${i})${C_RESET} $option"
+        ((i++))
+    done
+    echo ""
+}
+
+get_choice() {
+    local max=$1
+    local choice
+    
+    while true; do
+        read -p "$(echo -e "${C_MAGENTA}Select option (1-${max}): ${C_RESET}")" choice
+        if [[ "$choice" =~ ^[0-9]+$ ]] && ((choice >= 1 && choice <= max)); then
+            echo "$choice"
+            return 0
+        fi
+        warn "Invalid choice. Please enter a number between 1 and $max"
+    done
+}
+
+# === THEME SELECTION ===
+
+select_theme() {
+    show_header
+    show_menu "Choose Your Theme:" \
+        "🌑 Dark Theme (Black background)" \
+        "🌈 Colorful Theme (Vibrant colors)" \
+        "🔙 Back to main menu"
+    
+    case $(get_choice 3) in
+        1) echo "black" ;;
+        2) echo "color" ;;
+        3) return 1 ;;
+    esac
+}
+
+# === INSTALLATION ===
+
+create_backup() {
+    local files_to_backup=(
+        "$HOME/.zshrc"
+        "$HOME/.p10k.zsh"
+        "$HOME/.termux"
+        "$HOME/.config/nvim"
+    )
+    
+    info "Creating backup at $BACKUP_DIR"
+    mkdir -p "$BACKUP_DIR"
+    
+    for file in "${files_to_backup[@]}"; do
+        if [[ -e "$file" ]]; then
+            cp -r "$file" "$BACKUP_DIR/" 2>/dev/null || true
+        fi
+    done
+    
+    success "Backup created successfully"
+}
+
+install_packages_termux() {
+    info "Installing packages for Termux..."
+    
+    # Update repos
+    run_task "Updating package lists" pkg update -y
+    
+    # Essential packages
+    local packages=(
+        zsh git wget curl
+        python nodejs ruby
+        neovim ripgrep fzf
+        figlet lolcat
+    )
+    
+    run_task "Installing essential packages" pkg install -y "${packages[@]}"
+    
+    # Optional packages (don't fail if unavailable)
+    pkg install -y lsd logo-ls lazygit lua-language-server 2>/dev/null || true
+    
+    # Language-specific packages
+    pip install --break-system-packages neovim 2>/dev/null || true
+    npm install -g neovim 2>/dev/null || true
+    gem install neovim lolcat 2>/dev/null || true
+}
+
+install_packages_ubuntu() {
+    info "Installing packages for Ubuntu..."
+    
+    # Update repos
+    run_task "Updating package lists" sudo apt-get update
+    
+    # Essential packages
+    local packages=(
+        zsh git wget curl
+        python3 python3-pip nodejs npm ruby
+        neovim ripgrep fzf
+        figlet fonts-powerline
+    )
+    
+    run_task "Installing essential packages" sudo apt-get install -y "${packages[@]}"
+    
+    # Optional packages
+    sudo apt-get install -y fd-find bat 2>/dev/null || true
+    
+    # Ruby gems
+    gem install lolcat 2>/dev/null || true
+}
+
+setup_zsh_framework() {
+    info "Setting up Zsh framework..."
+    
+    # Install Oh My Zsh
+    if [[ ! -d "$HOME/.oh-my-zsh" ]]; then
+        run_task "Installing Oh My Zsh" \
+            git clone --depth=1 https://github.com/ohmyzsh/ohmyzsh.git "$HOME/.oh-my-zsh"
+    fi
+    
+    # Install Powerlevel10k
+    local p10k_dir="$HOME/.oh-my-zsh/custom/themes/powerlevel10k"
+    if [[ ! -d "$p10k_dir" ]]; then
+        run_task "Installing Powerlevel10k theme" \
+            git clone --depth=1 https://github.com/romkatv/powerlevel10k.git "$p10k_dir"
+    fi
+    
+    # Install plugins
+    local plugins=(
+        "zsh-users/zsh-syntax-highlighting"
+        "zsh-users/zsh-autosuggestions"
+        "zsh-users/zsh-completions"
+    )
+    
+    for plugin in "${plugins[@]}"; do
+        local plugin_name="${plugin##*/}"
+        local plugin_dir="$HOME/.oh-my-zsh/custom/plugins/$plugin_name"
+        
+        if [[ ! -d "$plugin_dir" ]]; then
+            run_task "Installing plugin: $plugin_name" \
+                git clone --depth=1 "https://github.com/$plugin" "$plugin_dir"
+        fi
+    done
+}
+
+install_theme_files() {
+    local theme="$1"
+    local os_type="$2"
+    
+    info "Installing theme files: $theme"
+    
+    # Copy theme configurations
+    local theme_dir="$SCRIPT_DIR/$theme"
+    
+    if [[ ! -d "$theme_dir" ]]; then
+        error "Theme directory not found: $theme_dir"
+    fi
+    
+    # Copy Zsh configs
+    cp "$theme_dir/.zshrc" "$HOME/.zshrc"
+    cp "$theme_dir/.p10k.zsh" "$HOME/.p10k.zsh"
+    cp "$theme_dir/.banner.sh" "$HOME/.banner.sh"
+    chmod +x "$HOME/.banner.sh"
+    
+    # Copy ASCII art files
+    [[ -f "$theme_dir/.draw" ]] && cp "$theme_dir/.draw" "$HOME/.draw"
+    [[ -f "$theme_dir/.draw.sh" ]] && cp "$theme_dir/.draw.sh" "$HOME/.draw.sh"
+    [[ -f "$theme_dir/ASCII-Shadow.flf" ]] && \
+        sudo cp "$theme_dir/ASCII-Shadow.flf" /usr/share/figlet/ 2>/dev/null || \
+        cp "$theme_dir/ASCII-Shadow.flf" "$PREFIX/share/figlet/" 2>/dev/null || true
+    
+    # Termux-specific files
+    if [[ "$os_type" == "termux" ]]; then
+        mkdir -p "$HOME/.termux"
+        cp "$theme_dir/termux.properties" "$HOME/.termux/"
+        cp "$theme_dir/colors.properties" "$HOME/.termux/"
+        [[ -f "$theme_dir/font.ttf" ]] && cp "$theme_dir/font.ttf" "$HOME/.termux/"
+    fi
+    
+    success "Theme files installed"
+}
+
+set_default_shell() {
+    info "Setting Zsh as default shell..."
+    
+    local zsh_path=$(which zsh)
+    
+    if [[ "$SHELL" != "$zsh_path" ]]; then
+        chsh -s "$zsh_path" || sudo chsh -s "$zsh_path" "$USER"
+        success "Default shell changed to Zsh"
+    else
+        info "Zsh is already the default shell"
+    fi
+}
+
+# === UNINSTALL ===
+
+uninstall_theme() {
+    show_header
+    warn "This will remove all Tmx-Theme configurations"
+    
+    if ! confirm "Are you sure you want to uninstall?"; then
+        return 0
+    fi
+    
+    info "Uninstalling Tmx-Theme..."
+    
+    # Remove config files
+    rm -rf "$HOME/.zshrc" "$HOME/.p10k.zsh" "$HOME/.banner.sh" \
+           "$HOME/.draw" "$HOME/.draw.sh" "$HOME/.termux" \
+           "$HOME/.oh-my-zsh" "$HOME/.config/nvim"
+    
+    # Reset shell
+    if [[ "$SHELL" == "$(which zsh)" ]]; then
+        chsh -s "$(which bash)" || sudo chsh -s "$(which bash)" "$USER"
+    fi
+    
+    success "Tmx-Theme uninstalled successfully"
+    info "Installed packages were not removed. Uninstall manually if needed."
+}
+
+# === MAIN MENU ===
+
+main_menu() {
+    while true; do
+        show_header
+        show_menu "Main Menu:" \
+            "🚀 Install Theme" \
+            "🗑️  Uninstall Theme" \
+            "📋 View Installation Log" \
+            "❌ Exit"
+        
+        case $(get_choice 4) in
+            1) install_workflow ;;
+            2) uninstall_theme; confirm "Press Enter to continue..."; ;;
+            3) less "$LOG_FILE" ;;
+            4) echo -e "\n${C_GREEN}Thank you for using Tmx-Theme!${C_RESET}\n"; exit 0 ;;
         esac
     done
 }
 
-# Safe package installation with retry
-safe_install() {
-    local packages=("$@")
-    local retry=0
+install_workflow() {
+    show_header
     
-    while [ $retry -lt $MAX_RETRIES ]; do
-        if apt install -y "${packages[@]}" 2>> "$ERROR_LOG"; then
-            return 0
-        fi
-        retry=$((retry + 1))
-        [ $retry -lt $MAX_RETRIES ] && sleep 2
-    done
+    # Detect OS
+    local os_type=$(check_requirements)
     
-    log_error "Failed to install: ${packages[*]}"
-    return 1
-}
-
-# Installation tasks
-install_packages() {
-    echo -e ""
-    echo -e "${RED} ${BOLD}•••It will take 10-20min•••${RESET}"
-    echo -e "${BOLD}----------------------------${RESET}"
-    echo -e ""
-    
-    # Fix repositories first
-    fix_termux_repos
-    
-    # Update package lists
-    run_task "${YELLOW}Updating package lists${RESET}" apt update
-    
-    # Essential packages in groups
-    local essential=(zsh git wget curl ncurses-utils)
-    local python=(python python-pip)
-    local ruby=(ruby)
-    local node=(nodejs)
-    local dev=(neovim ripgrep)
-    local tools=(figlet lolcat lsd logo-ls)
-    
-    # Install in stages with better error handling
-    echo -e "${BLUE}Installing essential packages...${RESET}"
-    safe_install "${essential[@]}" || echo -e "${YELLOW}Some essential packages failed${RESET}"
-    
-    echo -e "${BLUE}Installing Python...${RESET}"
-    safe_install "${python[@]}" || echo -e "${YELLOW}Python installation had issues${RESET}"
-    
-    echo -e "${BLUE}Installing Ruby...${RESET}"
-    safe_install "${ruby[@]}" || echo -e "${YELLOW}Ruby installation had issues${RESET}"
-    
-    echo -e "${BLUE}Installing Node.js...${RESET}"
-    safe_install "${node[@]}" || echo -e "${YELLOW}Node.js installation had issues${RESET}"
-    
-    echo -e "${BLUE}Installing development tools...${RESET}"
-    safe_install "${dev[@]}" || echo -e "${YELLOW}Some dev tools failed${RESET}"
-    
-    echo -e "${BLUE}Installing utilities...${RESET}"
-    safe_install "${tools[@]}" || echo -e "${YELLOW}Some utilities failed${RESET}"
-    
-    # Optional: Advanced packages (allow failure)
-    echo -e "${BLUE}Installing optional packages (failures are OK)...${RESET}"
-    apt install -y lua-language-server lazygit fzf 2>> "$ERROR_LOG" || true
-    
-    # Install language-specific packages
-    echo -e "${BLUE}Installing language packages...${RESET}"
-    pip install --break-system-packages neovim 2>> "$ERROR_LOG" || true
-    npm install -g neovim 2>> "$ERROR_LOG" || true
-    gem install neovim lolcat 2>> "$ERROR_LOG" || true
-}
-
-setup_fonts() {
-    mkdir -p ~/.termux
-    run_task "${MAGENTA}Setting up fonts${RESET}" cp -f "$HOME/Tmx-theme/$THEME_DIR/font.ttf" ~/.termux/
-    if [ -f "$HOME/Tmx-theme/$THEME_DIR/ASCII-Shadow.flf" ]; then
-        cp -f "$HOME/Tmx-theme/$THEME_DIR/ASCII-Shadow.flf" "$PREFIX/share/figlet/" 2>> "$ERROR_LOG" || true
-    fi
-}
-
-setup_configs() {
-    local config_files=(
-        ".termux/termux.properties"
-        ".termux/colors.properties"
-        ".termux/font.ttf"
-        ".zshrc"
-        ".p10k.zsh"
-        ".banner.sh"
-        ".draw"
-        ".draw.sh"
-        "../usr/etc/zshrc"
-    )
-
-    for file in "${config_files[@]}"; do
-        run_task "${BLUE}Configuring ${file}${RESET}" cp -f "$HOME/Tmx-theme/$THEME_DIR/${file##*/}" "$HOME/$file"
-    done
-}
-
-# Safe git clone with retry
-safe_git_clone() {
-    local url=$1
-    local target=$2
-    local retry=0
-    
-    while [ $retry -lt $MAX_RETRIES ]; do
-        if git clone --depth 1 "$url" "$target" 2>> "$ERROR_LOG"; then
-            return 0
-        fi
-        retry=$((retry + 1))
-        rm -rf "$target"
-        [ $retry -lt $MAX_RETRIES ] && sleep 2
-    done
-    
-    log_error "Failed to clone: $url"
-    return 1
-}
-
-setup_zsh_plugins() {
-    # Install Oh My Zsh core
-    if [ ! -d ~/.oh-my-zsh/.git ]; then
-        run_task "${CYAN}Installing Oh My Zsh${RESET}" \
-            safe_git_clone "https://github.com/ohmyzsh/ohmyzsh.git" ~/.oh-my-zsh
+    if [[ "$os_type" == "unknown" ]]; then
+        error "Unsupported operating system"
     fi
     
-    # Create required directories
-    mkdir -p ~/.oh-my-zsh/{plugins,custom/themes}
-    mkdir -p $PREFIX/etc/.plugin
+    # Select theme
+    local theme=$(select_theme)
+    [[ -z "$theme" ]] && return 0
     
-    # Install Powerlevel10k theme
-    if [ ! -d ~/.oh-my-zsh/custom/themes/powerlevel10k ]; then
-        run_task "${CYAN}Installing Powerlevel10k${RESET}" \
-            safe_git_clone "https://github.com/romkatv/powerlevel10k.git" \
-            ~/.oh-my-zsh/custom/themes/powerlevel10k
+    # Confirm installation
+    show_header
+    info "OS Type: ${C_BOLD}$os_type${C_RESET}"
+    info "Theme: ${C_BOLD}$theme${C_RESET}"
+    echo ""
+    
+    if ! confirm "Proceed with installation?" "y"; then
+        return 0
     fi
-
-    # Standard plugins
-    local ohmyzsh_plugins=(
-        "zsh-users/zsh-completions"
-        "zsh-users/zsh-history-substring-search"
-        "bobthecow/git-flow-completion"
-    )
-
-    # System-wide plugins
-    local etc_plugins=(
-        "zsh-users/zsh-syntax-highlighting"
-        "zsh-users/zsh-autosuggestions"
-    )
-
-    # Install Oh My Zsh plugins
-    for plugin in "${ohmyzsh_plugins[@]}"; do
-        local name=${plugin##*/}
-        local target_dir="$HOME/.oh-my-zsh/plugins/$name"
-        if [ ! -d "$target_dir" ]; then
-            run_task "${CYAN}Installing ${name}${RESET}" \
-                safe_git_clone "https://github.com/$plugin" "$target_dir" || \
-                echo -e "${YELLOW}Failed to install $name (continuing...)${RESET}"
-        fi
-    done
-
-    # Install system plugins
-    for plugin in "${etc_plugins[@]}"; do
-        local name=${plugin##*/}
-        local target_dir="$PREFIX/etc/.plugin/$name"
-        if [ ! -d "$target_dir" ]; then
-            run_task "${CYAN}Installing ${name}${RESET}" \
-                safe_git_clone "https://github.com/$plugin" "$target_dir" || \
-                echo -e "${YELLOW}Failed to install $name (continuing...)${RESET}"
-        fi
-    done
+    
+    # Create backup
+    create_backup
+    
+    # Install packages
+    if [[ "$os_type" == "termux" ]]; then
+        install_packages_termux
+    else
+        install_packages_ubuntu
+    fi
+    
+    # Setup Zsh
+    setup_zsh_framework
+    
+    # Install theme
+    install_theme_files "$theme" "$os_type"
+    
+    # Set default shell
+    set_default_shell
+    
+    # Reload Termux settings
+    [[ "$os_type" == "termux" ]] && termux-reload-settings 2>/dev/null || true
+    
+    # Success message
+    echo ""
+    success "Installation completed successfully!"
+    echo ""
+    echo -e "${C_YELLOW}Next steps:${C_RESET}"
+    echo -e "  1. ${C_CYAN}Restart your terminal${C_RESET}"
+    echo -e "  2. ${C_CYAN}Or run: source ~/.zshrc${C_RESET}"
+    echo ""
+    echo -e "${C_BLUE}Backup location: ${C_BOLD}$BACKUP_DIR${C_RESET}"
+    echo -e "${C_BLUE}Installation log: ${C_BOLD}$LOG_FILE${C_RESET}"
+    echo ""
+    
+    confirm "Press Enter to continue..."
 }
 
-setup_astronvim() {
-    [ -d ~/.config/nvim ] && run_task "${RED}Removing old nvim config${RESET}" rm -rf ~/.config/nvim
-    run_task "${GREEN}Installing AstroNvim${RESET}" \
-        safe_git_clone "https://github.com/tharindu899/Astronvim-Termux.git" ~/.config/nvim || \
-        echo -e "${YELLOW}AstroNvim installation failed (optional)${RESET}"
+# === ENTRY POINT ===
+
+main() {
+    # Initialize log
+    echo "=== Tmx-Theme Installation Started ===" > "$LOG_FILE"
+    log "Script directory: $SCRIPT_DIR"
+    
+    # Check if running in correct directory
+    if [[ ! -f "$SCRIPT_DIR/black/.zshrc" ]] && [[ ! -f "$SCRIPT_DIR/color/.zshrc" ]]; then
+        error "Theme files not found. Please run this script from the Tmx-theme directory."
+    fi
+    
+    # Run main menu
+    main_menu
 }
 
-uninstall_theme() {
-    echo -e "${RED}Uninstalling theme...${RESET}"
-    rm -rf ~/.termux ~/.zshrc ~/.p10k.zsh ~/.banner.sh ~/.oh-my-zsh ~/.config/nvim
-    termux-reload-settings 2>/dev/null || true
-    echo -e "${GREEN}Theme uninstalled successfully.${RESET}"
-}
-
-# Main execution
-echo -e "${BOLD}${GREEN}Starting Tmx Theme Installation${RESET}\n"
-
-# Check network first
-check_network
-
-select_theme
-install_packages
-setup_fonts
-setup_configs
-termux-reload-settings 2>/dev/null || true
-setup_zsh_plugins
-setup_astronvim
-
-# Final step
-run_task "${BOLD}Setting default shell${RESET}" chsh -s zsh
-
-echo -e "\n${BOLD}${GREEN}✓ Setup complete!${RESET}"
-echo -e "${YELLOW}Please restart Termux or run 'zsh' to apply changes.${RESET}"
-echo -e "${CYAN}Check $ERROR_LOG for any warnings or errors.${RESET}\n"
+# Run if executed directly
+if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
+    main "$@"
+fi
