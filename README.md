@@ -27,18 +27,20 @@ ___
 ```env
 ~/Tmx-theme/
   ├── 📜 install.sh              # Main installation script
-  ├── 📁 black/                 # Dark theme package
+  ├── 📁 src/                 # Needed package
   │   ├── 🎨 font.ttf           # Nerd Font for icons
   │   ├── ⚙️ termux.properties  # Termux settings/config
   │   ├── 🖌️ colors.properties  # Color scheme definitions
   │   ├── 🐧 .zshrc             # ZSH configuration file
-  │   ├── ⚡ .p10k.zsh          # Powerlevel10k theme config
   │   ├── 🖼️ .banner.sh         # Custom login banner script
   │   ├── 🎭 .draw              # ASCII art database
   │   ├── ✏️ .draw.sh           # Drawing script
   │   ├── 📜 zshrc              # System-wide ZSH config
   │   └── 🖋️ ASCII-Shadow.flf   # Custom figlet font
+  ├── 📁 black/                 # Dark theme package
+  │   └── ⚡ .p10k.zsh          # Powerlevel10k theme config
   └── 📁 color/                 # Color same us black
+       └── ⚡ .p10k.zsh          # Powerlevel10k theme config
 ```
 ___
 ## 📥 Installation option
@@ -51,21 +53,6 @@ pkg install git -y && \
 git clone https://github.com/tharindu899/Tmx-theme.git ~/Tmx-theme && \
 cd ~/Tmx-theme && \
 chmod +x install.sh
-```
-```bash
-bash install.sh
-```
-- for ubuntu
-```bash
-sudo apt update -y && \
-sudo apt upgrade -y && \
-sudo apt install git -y && \
-git clone https://github.com/tharindu899/Tmx-theme.git ~/Tmx-theme && \
-cd ~/Tmx-theme && \
-chmod +x ubuntu.sh
-```
-```bash
-bash ubuntu.sh
 ```
 ___
 

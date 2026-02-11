@@ -5,6 +5,7 @@ ERROR_LOG="$HOME/skip_errors.log"
 THEME_DIR=""
 THEME_NAME=""
 COLUMNS=$(tput cols)
+MAX_RETRIES=3
 
 # Color Variables
 RED='\033[0;31m'
@@ -59,6 +60,33 @@ run_task() {
     status_msg "$msg" "$([ $exit_code -eq 0 ] && echo '✓' || echo '✗')"
 }
 
+# Network check
+check_network() {
+    echo -e "${CYAN}Checking network connectivity...${RESET}"
+    if ! ping -c 1 8.8.8.8 >/dev/null 2>&1; then
+        echo -e "${RED}No internet connection detected!${RESET}"
+        echo -e "${YELLOW}Please check your network and try again.${RESET}"
+        exit 1
+    fi
+}
+
+# Fix Termux repositories
+fix_termux_repos() {
+    echo -e "${YELLOW}Fixing Termux repository configuration...${RESET}"
+    
+    # Backup current sources
+    [ -f "$PREFIX/etc/apt/sources.list" ] && \
+        cp "$PREFIX/etc/apt/sources.list" "$PREFIX/etc/apt/sources.list.backup"
+    
+    # Use official mirrors
+    cat > "$PREFIX/etc/apt/sources.list" << 'EOF'
+# Main Termux repository (Official mirrors)
+deb https://packages.termux.dev/apt/termux-main stable main
+EOF
+    
+    run_task "${BLUE}Updating repository information${RESET}" apt update
+}
+
 # Theme selection
 select_theme() {
     while true; do
@@ -97,10 +125,10 @@ install_packages() {
     echo -e "${RED} ${BOLD}•••It will take 10-20min•••${RESET}"
     echo -e "${BOLD}----------------------------${RESET}"
     echo -e ""
+    fix_termux_repos
     run_task "${YELLOW}Updating packages${RESET}" apt update
     run_task "${YELLOW}Upgrading system${RESET}" apt upgrade -y
-    run_task "${BLUE}Installing pkg-nala${RESET}" pkg install nala -y
-    run_task "${BLUE}Installing core utilities${RESET}" pkg install zsh git wget curl python micro figlet lsd logo-ls ncurses-utils -y
+    run_task "${BLUE}Installing core utilities${RESET}" pkg install zsh git wget curl python figlet lsd logo-ls ncurses-utils -y
     run_task "${BLUE}Installing development tools${RESET}" pkg install neovim lua-language-server ripgrep lazygit -y
     run_task "${BLUE}Installing figlet and lolcat${RESET}" pkg install figlet ruby -y
     run_task "${BLUE}Installing niovim tool${RESET}" apt install build-essential zip termux-api gdu gdb gdbserver gh fd fzf neovim lua-language-server jq-lsp luarocks stylua ripgrep yarn python-pip ccls clang zig rust-analyzer -y
@@ -112,10 +140,20 @@ install_packages() {
 
 setup_fonts() {
     mkdir -p ~/.termux
-    run_task "${MAGENTA}Setting up fonts${RESET}" cp -f "$HOME/Tmx-theme/$THEME_DIR/font.ttf" ~/.termux/
-    if [ -f "$HOME/Tmx-theme/$THEME_DIR/ASCII-Shadow.flf" ]; then
-        cp -f "$HOME/Tmx-theme/$THEME_DIR/ASCII-Shadow.flf" "$PREFIX/share/figlet/"
+    run_task "${MAGENTA}Setting up fonts${RESET}" cp -f "$HOME/Tmx-theme/src/font.ttf" ~/.termux/
+    if [ -f "$HOME/Tmx-theme/src/ASCII-Shadow.flf" ]; then
+        cp -f "$HOME/Tmx-theme/src/ASCII-Shadow.flf" "$PREFIX/share/figlet/"
     fi
+}
+
+setup_color() {
+    local config_color=(
+        ".p10k.zsh"
+    )
+
+    for file in "${config_color[@]}"; do
+        run_task "${BLUE}Configuring ${file}${RESET}" cp -f "$HOME/Tmx-theme/$THEME_DIR/${file##*/}" "$HOME/$file"
+    done
 }
 
 setup_configs() {
@@ -124,7 +162,6 @@ setup_configs() {
         ".termux/colors.properties"
         ".termux/font.ttf"
         ".zshrc"
-        ".p10k.zsh"
         ".banner.sh"
         ".draw"
         ".draw.sh"
@@ -132,7 +169,7 @@ setup_configs() {
     )
 
     for file in "${config_files[@]}"; do
-        run_task "${BLUE}Configuring ${file}${RESET}" cp -f "$HOME/Tmx-theme/$THEME_DIR/${file##*/}" "$HOME/$file"
+        run_task "${BLUE}Configuring ${file}${RESET}" cp -f "$HOME/Tmx-theme/src/${file##*/}" "$HOME/$file"
     done
 }
 
@@ -197,9 +234,11 @@ uninstall_theme() {
 }
 
 # Main execution
+check_network
 select_theme
 install_packages
 setup_fonts
+setup_color
 setup_configs
 termux-reload-settings
 setup_zsh_plugins

@@ -49,7 +49,7 @@ source $PREFIX/etc/.plugin/zsh-syntax-highlighting/zsh-syntax-highlighting.zsh
 source $PREFIX/etc/.plugin/zsh-autosuggestions/zsh-autosuggestions.zsh
 
 # Aliases
-alias pkg='nala'
+#alias pkg='nala'
 #alias apt='nala'
 alias g='git clone'
 alias t='termux-open'
@@ -81,7 +81,9 @@ alias z='vi ~/.zshrc'
 alias cdd='cd $HOME/storage/downloads'
 alias ax='acodeX-server'
 alias rr='source ~/.zshrc'
-alias vps='ssh root@192.xxx.xx.xx' #add your vps ip
+alias vps='ssh root@161.97.143.228'
+alias nano='vi'
+alias hh='cd ~/myproject'
 
 # Safety aliases
 alias cp='cp -i'
