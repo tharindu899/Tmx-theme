@@ -223,7 +223,7 @@ setup_zsh_plugins() {
 
 setup_astronvim() {
     [ -d ~/.config/nvim ] && run_task "${RED}Removing old nvim config${RESET}" rm -rf ~/.config/nvim
-    run_task "${GREEN}Installing AstroNvim${RESET}" git clone --depth 1 "https://github.com/tharindu899/Astronvim-Termux.git" ~/.config/nvim
+    run_task "${GREEN}Installing AstroNvim${RESET}" git clone --depth 1 "https://github.com/tharindu899/tmx-nvim.git" ~/.config/nvim
 }
 
 uninstall_theme() {
