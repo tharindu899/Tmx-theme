@@ -1,249 +1,398 @@
 #!/bin/bash
 
-# Configuration
+# ─────────────────────────────────────────────
+#   TMX-THEME INSTALLER  v2.1
+#   Real-time progress • Elapsed time • Size
+# ─────────────────────────────────────────────
+
 ERROR_LOG="$HOME/skip_errors.log"
 THEME_DIR=""
-THEME_NAME=""
-COLUMNS=$(tput cols)
+COLUMNS=$(tput cols 2>/dev/null || echo 80)
 MAX_RETRIES=3
 
-# Color Variables
-RED='\033[0;31m'
-GREEN='\033[0;32m'
-YELLOW='\033[0;33m'
-BLUE='\033[0;34m'
-MAGENTA='\033[0;35m'
-CYAN='\033[0;36m'
-WHITE='\033[0;37m'
-BOLD='\033[1m'
-RESET='\033[0m'
+# ── Colors ──────────────────────────────────
+RED=$'\033[0;31m'
+GREEN=$'\033[0;32m'
+YELLOW=$'\033[1;33m'
+BLUE=$'\033[0;34m'
+MAGENTA=$'\033[0;35m'
+CYAN=$'\033[0;36m'
+WHITE=$'\033[1;37m'
+DIM=$'\033[2m'
+BOLD=$'\033[1m'
+RESET=$'\033[0m'
 
-# Spinner and ASCII Art Colors
-ART_COLOR=$CYAN
-SPINNER_COLOR=$MAGENTA
+# ── Cursor control ───────────────────────────
+cursor_hide() { tput civis 2>/dev/null; }
+cursor_show() { tput cnorm 2>/dev/null; }
+trap 'cursor_show; echo -e "\n${RED}Interrupted.${RESET}"; exit 1' INT TERM
 
-# Error handling
+# ── Logging ──────────────────────────────────
 log_error() {
-    echo -e "[$(date +'%Y-%m-%d %H:%M:%S')] ERROR: $1" >> "$ERROR_LOG"
+    echo "[$(date +'%Y-%m-%d %H:%M:%S')] ERROR: $1" >> "$ERROR_LOG"
 }
 
-# Output functions
-status_msg() {
-    local msg=$1
-    local status=$2
-    local symbol_color=$([ "$status" == "✓" ] && echo "$GREEN" || echo "$RED")
-    local clean_msg=$(echo -e "$msg" | sed 's/\x1B\[[0-9;]*[a-zA-Z]//g')
-    local padding=$((COLUMNS - ${#clean_msg} - 12))
-    printf "\r%b[ %s ]%b %b%-${padding}s\n" "$symbol_color" "$status" "$RESET" "$msg" ""
+# ── Format helpers ───────────────────────────
+fmt_time() {
+    local s=$1
+    if (( s < 60 )); then
+        printf "%ds" "$s"
+    else
+        printf "%dm%02ds" "$((s/60))" "$((s%60))"
+    fi
 }
 
-spinner() {
-    local pid=$1 msg="$2"
-    local spin=('⠋' '⠙' '⠹' '⠸' '⠼' '⠴' '⠦' '⠧' '⠇' '⠏')
-
-    while kill -0 $pid 2>/dev/null; do
-        for c in "${spin[@]}"; do
-            printf "\r%b[%s]%b %b" "$SPINNER_COLOR" "$c" "$RESET" "$msg"
-            sleep 0.1
-        done
-    done
-    wait $pid
+fmt_size() {
+    local bytes=$1
+    if (( bytes < 1024 )); then
+        printf "%dB" "$bytes"
+    elif (( bytes < 1048576 )); then
+        printf "%.1fKB" "$(echo "scale=1; $bytes/1024" | bc 2>/dev/null || echo 0)"
+    else
+        printf "%.1fMB" "$(echo "scale=1; $bytes/1048576" | bc 2>/dev/null || echo 0)"
+    fi
 }
 
+# ── Get downloaded size from apt/pip/gem log ─
+get_dl_size() {
+    local logfile="$1"
+    # Parse sizes from apt output: "Get:N ... [X kB]"
+    local kb
+    kb=$(grep -oP '\[\K[0-9.]+ [kMG]?B(?=\])' "$logfile" 2>/dev/null | awk '
+        {
+            val=$1; unit=$2
+            if (unit=="kB" || unit=="KB") sum+=val*1024
+            else if (unit=="MB")          sum+=val*1048576
+            else if (unit=="GB")          sum+=val*1073741824
+            else                          sum+=val
+        }
+        END { printf "%.0f", sum }
+    ')
+    echo "${kb:-0}"
+}
+
+# ── Spinner frames ───────────────────────────
+SPIN_FRAMES=('⣾' '⣽' '⣻' '⢿' '⡿' '⣟' '⣯' '⣷')
+
+# ── run_task: run a command with live spinner + timer + size ──
+# Usage: run_task "Label" [--dl] cmd [args...]
 run_task() {
-    local msg="$1"
-    shift
-    ("$@") > /dev/null 2>> "$ERROR_LOG" &
+    local track_dl=0
+    if [[ "$1" == "--dl" ]]; then track_dl=1; shift; fi
+    local label="$1"; shift
+
+    local tmpout
+    tmpout=$(mktemp)
+    local start_time
+    start_time=$(date +%s)
+    local frame_idx=0
+
+    cursor_hide
+
+    # Run command in background, redirect all output to tmp
+    "$@" >"$tmpout" 2>&1 &
     local pid=$!
-    spinner $pid "$msg"
+
+    while kill -0 "$pid" 2>/dev/null; do
+        local now elapsed spin dl_info=""
+        now=$(date +%s)
+        elapsed=$(( now - start_time ))
+
+        spin="${SPIN_FRAMES[$((frame_idx % ${#SPIN_FRAMES[@]}))]}"
+        (( frame_idx++ ))
+
+        if (( track_dl )); then
+            local bytes
+            bytes=$(get_dl_size "$tmpout")
+            if (( bytes > 0 )); then
+                dl_info=" ${DIM}↓$(fmt_size "$bytes")${RESET}"
+            fi
+        fi
+
+        # Build the line
+        local time_str elapsed_str
+        elapsed_str=$(fmt_time "$elapsed")
+        time_str="${DIM}[${elapsed_str}]${RESET}"
+
+        # Truncate label if too long
+        local max_label=$(( COLUMNS - 28 ))
+        local short_label="${label:0:$max_label}"
+
+        printf "\r  ${MAGENTA}%s${RESET} ${WHITE}%-*s${RESET} %s%s " \
+            "$spin" "$max_label" "$short_label" "$time_str" "$dl_info"
+
+        sleep 0.08
+    done
+
+    wait "$pid"
     local exit_code=$?
-    status_msg "$msg" "$([ $exit_code -eq 0 ] && echo '✓' || echo '✗')"
+    local end_time elapsed_total
+    end_time=$(date +%s)
+    elapsed_total=$(( end_time - start_time ))
+
+    local time_str
+    time_str=$(fmt_time "$elapsed_total")
+
+    local dl_summary=""
+    if (( track_dl )); then
+        local bytes
+        bytes=$(get_dl_size "$tmpout")
+        if (( bytes > 0 )); then
+            dl_summary=" ${CYAN}↓$(fmt_size "$bytes")${RESET}"
+        fi
+    fi
+
+    if (( exit_code == 0 )); then
+        printf "\r  ${GREEN}✔${RESET} ${WHITE}%-*s${RESET} ${DIM}[%s]${RESET}%s\n" \
+            "$(( COLUMNS - 20 ))" "$label" "$time_str" "$dl_summary"
+    else
+        printf "\r  ${RED}✘${RESET} ${WHITE}%-*s${RESET} ${DIM}[%s]${RESET}%s\n" \
+            "$(( COLUMNS - 20 ))" "$label" "$time_str" "$dl_summary"
+        log_error "Task failed: $label"
+        cat "$tmpout" >> "$ERROR_LOG"
+    fi
+
+    rm -f "$tmpout"
+    cursor_show
+    return "$exit_code"
 }
 
-# Network check
+# ── Section header ───────────────────────────
+section() {
+    local title="$1"
+    local pad=$(( (COLUMNS - ${#title} - 4) / 2 ))
+    local line
+    line=$(printf '─%.0s' $(seq 1 $((COLUMNS-2))))
+    echo -e "\n${DIM}┌${line}┐${RESET}"
+    printf "${DIM}│${RESET}%*s${BOLD}${CYAN} %s ${RESET}%*s${DIM}│${RESET}\n" \
+        "$pad" "" "$title" "$pad" ""
+    echo -e "${DIM}└${line}┘${RESET}\n"
+}
+
+# ── Network check ────────────────────────────
 check_network() {
-    echo -e "${CYAN}Checking network connectivity...${RESET}"
-    if ! ping -c 1 8.8.8.8 >/dev/null 2>&1; then
-        echo -e "${RED}No internet connection detected!${RESET}"
-        echo -e "${YELLOW}Please check your network and try again.${RESET}"
+    section "NETWORK CHECK"
+    printf "  ${CYAN}⟳${RESET} Checking connectivity..."
+    if ping -c 1 -W 3 8.8.8.8 >/dev/null 2>&1; then
+        echo -e "\r  ${GREEN}✔${RESET} Network connection ${GREEN}OK${RESET}"
+    else
+        echo -e "\r  ${RED}✘${RESET} ${RED}No internet connection. Please reconnect and retry.${RESET}"
         exit 1
     fi
 }
 
-# Fix Termux repositories
+# ── Fix repos ────────────────────────────────
 fix_termux_repos() {
-    echo -e "${YELLOW}Fixing Termux repository configuration...${RESET}"
-    
-    # Backup current sources
     [ -f "$PREFIX/etc/apt/sources.list" ] && \
         cp "$PREFIX/etc/apt/sources.list" "$PREFIX/etc/apt/sources.list.backup"
-    
-    # Use official mirrors
     cat > "$PREFIX/etc/apt/sources.list" << 'EOF'
-# Main Termux repository (Official mirrors)
 deb https://packages.termux.dev/apt/termux-main stable main
 EOF
-    
-    run_task "${BLUE}Updating repository information${RESET}" apt update
+    run_task --dl "Updating repository index" apt update
 }
 
-# Theme selection
+# ── Theme selector ───────────────────────────
 select_theme() {
     while true; do
         clear
-        echo -e "${ART_COLOR}"
+        echo -e "${MAGENTA}"
         cat << "EOF"
-  ████████╗██╗  ██╗███████╗███████╗███╗   ███╗███████╗
-  ╚══██╔══╝██║  ██║██╔════╝██╔════╝████╗ ████║██╔════╝
-     ██║   ███████║█████╗  █████╗  ██╔████╔██║█████╗  
-     ██║   ██╔══██║██╔══╝  ██╔══╝  ██║╚██╔╝██║██╔══╝  
-     ██║   ██║  ██║███████╗███████╗██║ ╚═╝ ██║███████╗
-     ╚═╝   ╚═╝  ╚═╝╚══════╝╚══════╝╚═╝     ╚═╝╚══════╝
+  ████████╗██╗  ██╗███████╗███╗   ███╗███████╗
+  ╚══██╔══╝██║  ██║██╔════╝████╗ ████║██╔════╝
+     ██║   ███████║█████╗  ██╔████╔██║█████╗
+     ██║   ██╔══██║██╔══╝  ██║╚██╔╝██║██╔══╝
+     ██║   ██║  ██║███████╗██║ ╚═╝ ██║███████╗
+     ╚═╝   ╚═╝  ╚═╝╚══════╝╚═╝     ╚═╝╚══════╝
 EOF
         echo -e "${RESET}"
-        echo -e "${CYAN}  ${BOLD}1) Black Theme${RESET}"
-        echo -e "${CYAN}  ${BOLD}2) Color Theme${RESET}"
-        echo -e "${RED}  ${BOLD}3) Uninstall${RESET}"
-        echo -e "${YELLOW}  ${BOLD}4) Exit${RESET}"
+
+        local line
+        line=$(printf '─%.0s' $(seq 1 $((COLUMNS-2))))
+        echo -e "${DIM}${line}${RESET}"
+        echo -e "  ${BOLD}${CYAN}1)${RESET}  🖤  Black Theme"
+        echo -e "  ${BOLD}${CYAN}2)${RESET}  🎨  Color Theme"
+        echo -e "  ${BOLD}${RED}3)${RESET}  🗑️   Uninstall"
+        echo -e "  ${BOLD}${YELLOW}4)${RESET}  ✕   Exit"
+        echo -e "${DIM}${line}${RESET}"
         echo
-        read -p "$(echo -e "${BOLD}${MAGENTA}Select theme (1-4): ${RESET}")" choice
+        read -rp "$(echo -e "  ${BOLD}${MAGENTA}Select option [1-4]: ${RESET}")" choice
 
         case "$choice" in
             1) THEME_DIR="black"; return 0 ;;
             2) THEME_DIR="color"; return 0 ;;
             3) uninstall_theme; exit 0 ;;
-            4) echo -e "${RED}Exiting...${RESET}"; exit 0 ;;
-            *) echo -e "${RED}Invalid option. Please enter 1-4.${RESET}"; sleep 1 ;;
+            4) echo -e "\n${YELLOW}Bye!${RESET}"; exit 0 ;;
+            *) echo -e "  ${RED}Invalid choice. Enter 1–4.${RESET}"; sleep 1 ;;
         esac
     done
 }
 
-
-# Installation tasks
+# ── Install packages ─────────────────────────
 install_packages() {
-    echo -e ""
-    echo -e "${RED} ${BOLD}•••It will take 10-20min•••${RESET}"
-    echo -e "${BOLD}----------------------------${RESET}"
-    echo -e ""
+    section "PACKAGE INSTALLATION"
+    echo -e "  ${YELLOW}⚠${RESET}  This step may take ${BOLD}10–20 minutes${RESET} depending on your connection.\n"
+
     fix_termux_repos
-    run_task "${YELLOW}Updating packages${RESET}" apt update
-    run_task "${YELLOW}Upgrading system${RESET}" apt upgrade -y
-    run_task "${BLUE}Installing core utilities${RESET}" pkg install zsh git wget curl python figlet lsd logo-ls ncurses-utils -y
-    run_task "${BLUE}Installing development tools${RESET}" pkg install neovim lua-language-server ripgrep lazygit -y
-    run_task "${BLUE}Installing figlet and lolcat${RESET}" pkg install figlet ruby -y
-    run_task "${BLUE}Installing niovim tool${RESET}" apt install build-essential zip termux-api gdu gdb gdbserver gh fd fzf neovim lua-language-server jq-lsp luarocks stylua ripgrep yarn python-pip ccls clang zig rust-analyzer -y
-    run_task "${BLUE}Installing neovim${RESET}" pip install neovim
-    run_task "${BLUE}Installing nmp neovim${RESET}" npm install -g neovim
-    run_task "${BLUE}Installing gem neovim${RESET}" gem install neovim
-    run_task "${BLUE}Installing lolcat gem (for animation support)${RESET}" gem install lolcat
+
+    run_task             "Upgrading system packages"        apt upgrade -y
+    run_task --dl        "Core utilities (zsh git python figlet lsd)" \
+        pkg install zsh git wget curl python figlet lsd logo-ls ncurses-utils -y
+    run_task --dl        "Dev tools (neovim lua ripgrep lazygit)" \
+        pkg install neovim lua-language-server ripgrep lazygit -y
+    run_task --dl        "Ruby + figlet (for lolcat)" \
+        pkg install figlet ruby -y
+    run_task --dl        "Build tools & extras" \
+        apt install build-essential zip termux-api gdu gdb gdbserver gh fd fzf \
+        neovim lua-language-server jq-lsp luarocks stylua ripgrep yarn \
+        python-pip ccls clang zig rust-analyzer -y
+    run_task             "pip: neovim"           pip install neovim
+    run_task --dl        "npm: neovim"           npm install -g neovim
+    run_task             "gem: neovim"           gem install neovim
+    run_task             "gem: lolcat"           gem install lolcat
 }
 
+# ── Font setup ───────────────────────────────
 setup_fonts() {
+    section "FONTS & CONFIG"
     mkdir -p ~/.termux
-    run_task "${MAGENTA}Setting up fonts${RESET}" cp -f "$HOME/Tmx-theme/src/font.ttf" ~/.termux/
+    run_task "Installing Nerd Font" \
+        cp -f "$HOME/Tmx-theme/src/font.ttf" ~/.termux/
     if [ -f "$HOME/Tmx-theme/src/ASCII-Shadow.flf" ]; then
-        cp -f "$HOME/Tmx-theme/src/ASCII-Shadow.flf" "$PREFIX/share/figlet/"
+        run_task "Installing figlet font (ASCII-Shadow)" \
+            cp -f "$HOME/Tmx-theme/src/ASCII-Shadow.flf" "$PREFIX/share/figlet/"
     fi
 }
 
+# ── Theme config ─────────────────────────────
 setup_color() {
-    local config_color=(
-        ".p10k.zsh"
-    )
-
-    for file in "${config_color[@]}"; do
-        run_task "${BLUE}Configuring ${file}${RESET}" cp -f "$HOME/Tmx-theme/$THEME_DIR/${file##*/}" "$HOME/$file"
-    done
+    run_task "Applying theme config (.p10k.zsh)" \
+        cp -f "$HOME/Tmx-theme/$THEME_DIR/.p10k.zsh" "$HOME/.p10k.zsh"
 }
 
+# ── Dot-files ────────────────────────────────
 setup_configs() {
-    local config_files=(
-        ".termux/termux.properties"
-        ".termux/colors.properties"
-        ".termux/font.ttf"
-        ".zshrc"
-        ".banner.sh"
-        ".draw"
-        ".draw.sh"
-        "../usr/etc/zshrc"
+    local -A files=(
+        [".termux/termux.properties"]="termux.properties"
+        [".termux/colors.properties"]="colors.properties"
+        [".termux/font.ttf"]="font.ttf"
+        [".zshrc"]=".zshrc"
+        [".banner.sh"]=".banner.sh"
+        [".draw"]=".draw"
+        [".draw.sh"]=".draw.sh"
+        ["../usr/etc/zshrc"]="zshrc"
     )
 
-    for file in "${config_files[@]}"; do
-        run_task "${BLUE}Configuring ${file}${RESET}" cp -f "$HOME/Tmx-theme/src/${file##*/}" "$HOME/$file"
+    for dest in "${!files[@]}"; do
+        local src="${files[$dest]}"
+        run_task "Config → ~/${dest##*/}" \
+            cp -f "$HOME/Tmx-theme/src/$src" "$HOME/$dest"
     done
 }
 
+# ── ZSH plugins ──────────────────────────────
 setup_zsh_plugins() {
-    # Install Oh My Zsh core
+    section "ZSH PLUGINS"
+
     if [ ! -d ~/.oh-my-zsh/.git ]; then
-        run_task "${CYAN}Installing Oh My Zsh${RESET}" \
+        run_task --dl "Installing Oh My Zsh" \
             git clone --depth 1 "https://github.com/ohmyzsh/ohmyzsh.git" ~/.oh-my-zsh
+    else
+        echo -e "  ${DIM}✔ Oh My Zsh already installed — skipping${RESET}"
     fi
-    
-    # Create required directories
+
     mkdir -p ~/.oh-my-zsh/{plugins,custom/themes}
-    mkdir -p $PREFIX/etc/.plugin
-    
-    # Install Powerlevel10k theme
+    mkdir -p "$PREFIX/etc/.plugin"
+
     if [ ! -d ~/.oh-my-zsh/custom/themes/powerlevel10k ]; then
-        run_task "${CYAN}Installing Powerlevel10k${RESET}" \
+        run_task --dl "Installing Powerlevel10k theme" \
             git clone --depth 1 "https://github.com/romkatv/powerlevel10k.git" \
             ~/.oh-my-zsh/custom/themes/powerlevel10k
+    else
+        echo -e "  ${DIM}✔ Powerlevel10k already installed — skipping${RESET}"
     fi
 
-    # Standard plugins
-    local ohmyzsh_plugins=(
+    local -a ohmyzsh_plugins=(
         "zsh-users/zsh-completions"
         "zsh-users/zsh-history-substring-search"
         "bobthecow/git-flow-completion"
     )
-
-    # System-wide plugins
-    local etc_plugins=(
+    local -a etc_plugins=(
         "zsh-users/zsh-syntax-highlighting"
         "zsh-users/zsh-autosuggestions"
     )
 
-    # Install Oh My Zsh plugins
     for plugin in "${ohmyzsh_plugins[@]}"; do
-        local name=${plugin##*/}
-        local target_dir="$HOME/.oh-my-zsh/plugins/$name"
-        [ -d "$target_dir" ] || run_task "${CYAN}Installing ${name}${RESET}" \
-            git clone --depth 1 "https://github.com/$plugin" "$target_dir"
+        local name="${plugin##*/}"
+        local target="$HOME/.oh-my-zsh/plugins/$name"
+        if [ ! -d "$target" ]; then
+            run_task --dl "Plugin: $name" \
+                git clone --depth 1 "https://github.com/$plugin" "$target"
+        else
+            echo -e "  ${DIM}✔ $name already present — skipping${RESET}"
+        fi
     done
 
-    # Install system plugins
     for plugin in "${etc_plugins[@]}"; do
-        local name=${plugin##*/}
-        local target_dir="$PREFIX/etc/.plugin/$name"
-        [ -d "$target_dir" ] || run_task "${CYAN}Installing ${name}${RESET}" \
-            git clone --depth 1 "https://github.com/$plugin" "$target_dir"
+        local name="${plugin##*/}"
+        local target="$PREFIX/etc/.plugin/$name"
+        if [ ! -d "$target" ]; then
+            run_task --dl "Plugin: $name" \
+                git clone --depth 1 "https://github.com/$plugin" "$target"
+        else
+            echo -e "  ${DIM}✔ $name already present — skipping${RESET}"
+        fi
     done
 }
 
+# ── AstroNvim ────────────────────────────────
 setup_astronvim() {
-    [ -d ~/.config/nvim ] && run_task "${RED}Removing old nvim config${RESET}" rm -rf ~/.config/nvim
-    run_task "${GREEN}Installing AstroNvim${RESET}" git clone --depth 1 "https://github.com/tharindu899/tmx-nvim.git" ~/.config/nvim
+    section "NEOVIM (ASTRONVIM)"
+    [ -d ~/.config/nvim ] && run_task "Removing old nvim config" rm -rf ~/.config/nvim
+    run_task --dl "Cloning AstroNvim config" \
+        git clone --depth 1 "https://github.com/tharindu899/tmx-nvim.git" ~/.config/nvim
 }
 
+# ── Uninstall ────────────────────────────────
 uninstall_theme() {
-    echo -e "${RED}Uninstalling theme...${RESET}"
-    rm -rf ~/.termux ~/.zshrc ~/.p10k.zsh ~/.banner.sh ~/.oh-my-zsh ~/.config/nvim
+    section "UNINSTALL"
+    run_task "Removing theme files" \
+        rm -rf ~/.termux ~/.zshrc ~/.p10k.zsh ~/.banner.sh ~/.oh-my-zsh ~/.config/nvim
     termux-reload-settings
-    echo -e "${GREEN}Theme uninstalled successfully.${RESET}"
+    echo -e "\n  ${GREEN}✔${RESET} Theme uninstalled successfully.\n"
 }
 
-# Main execution
+# ── Summary ──────────────────────────────────
+print_summary() {
+    local line
+    line=$(printf '─%.0s' $(seq 1 $((COLUMNS-2))))
+    echo
+    echo -e "${DIM}${line}${RESET}"
+    echo -e "  ${GREEN}${BOLD}✔  Setup complete!${RESET}"
+    echo -e "  ${DIM}Restart Termux or run:${RESET}  ${CYAN}zsh${RESET}"
+    echo -e "${DIM}${line}${RESET}"
+    echo
+}
+
+# ════════════════════════════════════════════
+#   MAIN
+# ════════════════════════════════════════════
 check_network
 select_theme
+
+clear
+echo -e "\n  ${BOLD}${MAGENTA}Theme:${RESET} ${BOLD}${CYAN}${THEME_DIR^}${RESET}\n"
+
 install_packages
 setup_fonts
 setup_color
 setup_configs
-termux-reload-settings
+
+run_task "Reloading Termux settings" termux-reload-settings
+
 setup_zsh_plugins
 setup_astronvim
 
-# Final step
-run_task "${BOLD}Setting default shell${RESET}" chsh -s zsh
-echo -e "\n${BOLD}${GREEN}✓ Setup complete! Restart your terminal or run 'zsh'.${RESET}"
+section "FINALIZING"
+run_task "Setting default shell to zsh" chsh -s zsh
+
+print_summary
