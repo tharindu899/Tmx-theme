@@ -84,6 +84,9 @@ alias rr='source ~/.zshrc'
 alias vps='ssh root@161.97.143.228'
 alias nano='vi'
 alias hh='cd ~/myproject'
+# GitHub accounts
+alias gh1='GH_CONFIG_DIR="$HOME/.config/gh-account1" gh'
+alias gh2='GH_CONFIG_DIR="$HOME/.config/gh-account2" gh'
 
 # Safety aliases
 alias cp='cp -i'

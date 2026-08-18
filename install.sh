@@ -289,6 +289,22 @@ setup_configs() {
     done
 }
 
+# ── GitHub dual account setup ──────────────────
+setup_github_accounts() {
+    section "GITHUB DUAL ACCOUNTS"
+
+    local script="$HOME/Tmx-theme/scripts/github-dual-account.sh"
+
+    if [ ! -f "$script" ]; then
+        echo -e " ${RED}✘${RESET} GitHub account setup script not found."
+        log_error "Missing GitHub dual account script: $script"
+        return 1
+    fi
+
+    run_task "Configuring GitHub accounts" \
+        bash "$script"
+}
+
 # ── ZSH plugins ──────────────────────────────
 setup_zsh_plugins() {
     section "ZSH PLUGINS"
@@ -390,6 +406,9 @@ setup_configs
 run_task "Reloading Termux settings" termux-reload-settings
 
 setup_zsh_plugins
+
+setup_github_accounts
+
 setup_astronvim
 
 section "FINALIZING"
