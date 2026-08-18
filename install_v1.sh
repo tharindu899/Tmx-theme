@@ -7,6 +7,7 @@
 
 ERROR_LOG="$HOME/skip_errors.log"
 THEME_DIR=""
+SETUP_GITHUB=1   # default: enabled
 
 # ── Terminal size ─────────────────────────────────────────
 COLS=$(tput cols  2>/dev/null || echo 80)
@@ -380,14 +381,17 @@ select_theme() {
     tput rmcup 2>/dev/null
     _cnorm
 
+    # local copy of the global flag
+    local github_flag=$SETUP_GITHUB
+
     while true; do
         tput clear 2>/dev/null
         _refresh_dims
 
+        # ASCII art (unchanged)
         local art_w=49 art_h=6
-        local ar=$(( (LINES - art_h - 12) / 2 )); (( ar < 1 )) && ar=1
+        local ar=$(( (LINES - art_h - 14) / 2 )); (( ar < 1 )) && ar=1
         local ac=$(( (COLS  - art_w)      / 2 )); (( ac < 0 )) && ac=0
-
         local ART=(
           "  ████████╗██╗  ██╗███████╗███╗   ███╗███████╗"
           "  ╚══██╔══╝██║  ██║██╔════╝████╗ ████║██╔════╝"
@@ -404,38 +408,50 @@ select_theme() {
         _cup $(( ar+art_h )) $(( ac+11 ))
         printf "${DIM}Termux Theme Installer  v4.0${RST}"
 
-        local mw=34 mh=10
+        # Menu box dimensions
+        local mw=42 mh=12   # increased height for extra line
         local mr=$(( ar + art_h + 2 ))
         local mc=$(( (COLS - mw) / 2 ))
 
-        # menu box
+        # Box border
         _cup "$mr" "$mc";                printf "${DIM}╔"; printf '═%.0s' $(seq 1 $(( mw-2 ))); printf "╗${RST}"
         for (( i=1; i<mh-1; i++ )); do
             _cup $(( mr+i )) "$mc";       printf "${DIM}║${RST}%-$(( mw-2 ))s${DIM}║${RST}" " "
         done
         _cup $(( mr+mh-1 )) "$mc";       printf "${DIM}╚"; printf '═%.0s' $(seq 1 $(( mw-2 ))); printf "╝${RST}"
 
-        # header inside box
+        # Title
         _cup $(( mr+1 )) $(( mc+2 ))
         printf "${BOLD}${C}%-$(( mw-4 ))s${RST}" "  SELECT THEME"
         _cup $(( mr+2 )) $(( mc+2 ))
         printf "${DIM}%-$(( mw-4 ))s${RST}" "$(printf '─%.0s' $(seq 1 $(( mw-4 ))))"
 
+        # Options
         _cup $(( mr+3 )) $(( mc+4 )); printf "${BOLD}${C}1)${RST}  🖤  Black Theme"
         _cup $(( mr+4 )) $(( mc+4 )); printf "${BOLD}${C}2)${RST}  🎨  Color Theme"
         _cup $(( mr+5 )) $(( mc+2 )); printf "${DIM}%-$(( mw-4 ))s${RST}" "$(printf '─%.0s' $(seq 1 $(( mw-4 ))))"
         _cup $(( mr+6 )) $(( mc+4 )); printf "${BOLD}${R}3)${RST}  🗑️   Uninstall"
-        _cup $(( mr+7 )) $(( mc+4 )); printf "${BOLD}${Y}4)${RST}  ✕   Exit"
 
+        # GitHub toggle – show current status
+        local status_text="[ON]"
+        (( github_flag == 0 )) && status_text="[OFF]"
+        _cup $(( mr+7 )) $(( mc+4 )); printf "${BOLD}${Y}4)${RST}  🔄  GitHub dual accounts  ${C}%s${RST}" "$status_text"
+
+        _cup $(( mr+8 )) $(( mc+2 )); printf "${DIM}%-$(( mw-4 ))s${RST}" "$(printf '─%.0s' $(seq 1 $(( mw-4 ))))"
+        _cup $(( mr+9 )) $(( mc+4 )); printf "${BOLD}${Y}5)${RST}  ✕   Exit"
+
+        # Prompt
         _cup $(( mr+mh+1 )) $(( mc+2 ))
-        read -rp "$(printf "  ${BOLD}${M}Select [1-4]: ${RST}")" choice
+        read -rp "$(printf "  ${BOLD}${M}Select [1-5]: ${RST}")" choice
 
         case "$choice" in
             1) THEME_DIR="black"
+               SETUP_GITHUB=$github_flag   # save current toggle state
                tput clear 2>/dev/null
                _init_ui
                return 0 ;;
             2) THEME_DIR="color"
+               SETUP_GITHUB=$github_flag
                tput clear 2>/dev/null
                _init_ui
                return 0 ;;
@@ -443,11 +459,18 @@ select_theme() {
                _init_ui
                _do_uninstall
                tput rmcup 2>/dev/null; _cnorm; exit 0 ;;
-            4) tput rmcup 2>/dev/null; _cnorm
+            4) # toggle the flag
+               if (( github_flag == 1 )); then
+                   github_flag=0
+               else
+                   github_flag=1
+               fi
+               ;;
+            5) tput rmcup 2>/dev/null; _cnorm
                echo -e "\n${Y}Bye!${RST}"; exit 0 ;;
             *)
                _cup $(( mr+mh+2 )) $(( mc+2 ))
-               printf "${R}Invalid. Enter 1–4.${RST}"; sleep 1 ;;
+               printf "${R}Invalid. Enter 1–5.${RST}"; sleep 1 ;;
         esac
     done
 }
@@ -496,6 +519,25 @@ setup_fonts_and_config() {
     run_task "~/.draw.sh"                               cp -f "$HOME/Tmx-theme/src/.draw.sh"           "$HOME/.draw.sh"
     run_task "/usr/etc/zshrc"                           cp -f "$HOME/Tmx-theme/src/zshrc"              "$PREFIX/etc/zshrc"
     run_task "termux-reload-settings"                   termux-reload-settings
+}
+
+# ── GitHub dual account setup ──────────────────
+setup_github_accounts() {
+    echo
+    echo "======================================"
+    echo " GitHub Dual Account Setup"
+    echo "======================================"
+    echo
+
+    local script="$HOME/Tmx-theme/scripts/github-dual-account.sh"
+
+    if [ ! -f "$script" ]; then
+        echo "✘ GitHub dual account script not found:"
+        echo "  $script"
+        return 1
+    fi
+
+    bash "$script"
 }
 
 setup_zsh_plugins() {
@@ -610,6 +652,15 @@ TASK_TOTAL=30
 
 install_packages
 setup_fonts_and_config
+
+# GitHub setup – only if enabled
+if (( SETUP_GITHUB )); then
+    setup_github_accounts
+else
+    log_section "GITHUB DUAL ACCOUNTS"
+    log "  ${DIM}⏭  Skipped by user choice.${RST}"
+fi
+
 setup_zsh_plugins
 setup_astronvim
 show_done

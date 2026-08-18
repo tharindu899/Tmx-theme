@@ -193,6 +193,8 @@ EOF
 
 # ── Theme selector ───────────────────────────
 select_theme() {
+    local github_flag=1   # local copy
+
     while true; do
         clear
         echo -e "${MAGENTA}"
@@ -212,17 +214,27 @@ EOF
         echo -e "  ${BOLD}${CYAN}1)${RESET}  🖤  Black Theme"
         echo -e "  ${BOLD}${CYAN}2)${RESET}  🎨  Color Theme"
         echo -e "  ${BOLD}${RED}3)${RESET}  🗑️   Uninstall"
-        echo -e "  ${BOLD}${YELLOW}4)${RESET}  ✕   Exit"
+
+        # GitHub toggle with current status
+        local status="[ON]"; (( github_flag == 0 )) && status="[OFF]"
+        echo -e "  ${BOLD}${YELLOW}4)${RESET}  🔄  GitHub dual accounts  ${CYAN}${status}${RESET}"
+
+        echo -e "  ${BOLD}${YELLOW}5)${RESET}  ✕   Exit"
         echo -e "${DIM}${line}${RESET}"
         echo
-        read -rp "$(echo -e "  ${BOLD}${MAGENTA}Select option [1-4]: ${RESET}")" choice
+        read -rp "$(echo -e "  ${BOLD}${MAGENTA}Select option [1-5]: ${RESET}")" choice
 
         case "$choice" in
-            1) THEME_DIR="black"; return 0 ;;
-            2) THEME_DIR="color"; return 0 ;;
+            1) THEME_DIR="black"
+               SETUP_GITHUB=$github_flag
+               return 0 ;;
+            2) THEME_DIR="color"
+               SETUP_GITHUB=$github_flag
+               return 0 ;;
             3) uninstall_theme; exit 0 ;;
-            4) echo -e "\n${YELLOW}Bye!${RESET}"; exit 0 ;;
-            *) echo -e "  ${RED}Invalid choice. Enter 1–4.${RESET}"; sleep 1 ;;
+            4) (( github_flag == 1 )) && github_flag=0 || github_flag=1 ;;
+            5) echo -e "\n${YELLOW}Bye!${RESET}"; exit 0 ;;
+            *) echo -e "  ${RED}Invalid choice. Enter 1–5.${RESET}"; sleep 1 ;;
         esac
     done
 }
@@ -407,7 +419,12 @@ run_task "Reloading Termux settings" termux-reload-settings
 
 setup_zsh_plugins
 
-setup_github_accounts
+# Conditionally run GitHub setup
+if (( SETUP_GITHUB )); then
+    setup_github_accounts
+else
+    echo -e "  ${DIM}⏭  GitHub dual‑account setup skipped by user.${RESET}"
+fi
 
 setup_astronvim
 
